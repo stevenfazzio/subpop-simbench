@@ -20,6 +20,10 @@ RESULTS_DIR = ROOT / "results"
 # which is not committed. Only aggregate tables and figures go to reports/.
 SUBPOP_DIR = DATA_DIR / "subpop"
 OVERLAP_PATH = DATA_DIR / "analysis" / "overlap_items.parquet"
+# Fine-tuning examples built from SubPOP-Train, and adapters trained on them here. Both
+# derive from the gated data, so they are kept out of the repository as well.
+TRAIN_EXAMPLES_PATH = SUBPOP_DIR / "train_examples.parquet"
+ADAPTERS_DIR = DATA_DIR / "adapters"
 REPORTS_DIR = ROOT / "reports"
 TABLES_DIR = REPORTS_DIR / "tables"
 FIGURES_DIR = REPORTS_DIR / "figures"

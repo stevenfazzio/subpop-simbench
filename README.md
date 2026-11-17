@@ -325,6 +325,45 @@ uv run python scripts/make_figures.py       # reports/figures/subpop_on_simbench
 Without the two optional steps, `analyze.py` skips the overlap tables and everything else
 still runs.
 
+## Training an adapter
+
+**Status: built and tested on a tiny random model only. No adapter has been trained on a
+real model with this code yet, so nothing in the Results section depends on it.**
+
+SubPOP's released adapters fit only their four base models. To try another base model, the
+repo can train an adapter with SubPOP's recipe. Its first job is to retrain the Mistral-7B
+adapter and check the result against the released one.
+
+```bash
+uv run python scripts/fetch_subpop.py              # gated dataset, needs a Hugging Face token
+uv run python scripts/build_training_data.py       # data/subpop/train_examples.parquet
+uv run python scripts/train_adapter.py --tag mistral-7b-v0.1__retrain \
+    --base mistralai/Mistral-7B-v0.1 --tokenization bos_string
+```
+
+The training set is 63,920 prompts from 2,906 questions, with another 323 questions
+(7,106 prompts) held out for validation. One epoch is 250 steps and about 9.7 million
+tokens for Mistral-7B. A run writes one adapter per epoch to `data/adapters/<tag>/`,
+records which epoch had the lowest validation loss, and resumes after an interruption.
+`--max-steps N` stops early and reports speed; `--eval-only` scores an existing model on
+the validation questions. Any epoch can be scored on SimBench by passing its directory to
+`run_inference.py --adapter`.
+
+Copied from SubPOP's training code: the loss, the label tokens, the prompt, the adapter
+shape (rank 8 on the query and value projections), AdamW, the batch of 256 and the cosine
+schedule. Three settings are not recorded by SubPOP and are chosen here: 20 epochs (its
+example says 50), a warm-up of 5% of steps, and which questions are held out. Two details
+are copied even though they look odd:
+
+- Targets are the answer shares plus the refusal share, without renormalising, so they sum
+  to between 1.0 and 1.9.
+- SubPOP's training code tokenises the first word of a prompt differently from its
+  inference code for Mistral-7B, though not for Llama-2. `--tokenization` selects which.
+
+The full list of what is copied and what differs is at the top of
+`src/subpop_simbench/train.py`. Training examples and trained adapters derive from the
+gated SubPOP data and are not committed.
+
 ## Runs
 
 All runs are unquantised bfloat16 on one GPU, with the adapter applied unmerged. Exact
