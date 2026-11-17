@@ -7,13 +7,17 @@
 # A pod bills for its GPU until someone stops it, so a training run that outlasts the
 # session that launched it keeps billing after it finishes or crashes. This wrapper:
 #
-#   - refuses to start unless it can find runpodctl and this pod's id, so it never starts
-#     a job it could not stop afterwards (--check does only this test);
+#   - refuses to start unless it knows this pod's id and has a way to stop it, so it never
+#     starts a job it could not stop afterwards (--check does only this test);
 #   - runs COMMAND with its output appended to FILE as it is produced: Python is set
 #     unbuffered and nothing sits between the job and the file;
 #   - kills COMMAND after H hours, if --max-hours is given;
 #   - then stops the pod: after success, after failure, at the deadline, or when the
 #     wrapper itself is interrupted. A failed stop call is retried for half an hour.
+#
+# The pod is stopped through RunPod's REST API with the pod's own key, and failing that
+# through runpodctl in its current and its older syntax. On the image used here runpodctl
+# (1.14) answers "Unauthorized" to that key, while the REST API accepts it.
 #
 # It exits with COMMAND's exit status.
 #
@@ -30,6 +34,8 @@
 set -u
 
 RUNPODCTL=${RUNPODCTL:-runpodctl}
+CURL=${CURL:-curl}
+RUNPOD_API_URL=${RUNPOD_API_URL:-https://api.runpod.io/v2}
 PID1_ENVIRON=${PID1_ENVIRON:-/proc/1/environ}
 STOP_ATTEMPTS=${STOP_ATTEMPTS:-30}
 STOP_RETRY_SECONDS=${STOP_RETRY_SECONDS:-60}
@@ -67,9 +73,19 @@ fi
 export RUNPOD_POD_ID
 [ -n "$RUNPOD_API_KEY" ] && export RUNPOD_API_KEY
 
+# The ways this pod could be stopped: the REST API needs curl and the key; runpodctl may
+# carry its own configuration.
+ways=""
+if [ -n "$RUNPOD_API_KEY" ] && command -v "$CURL" > /dev/null 2>&1; then
+  ways="REST API"
+fi
+if command -v "$RUNPODCTL" > /dev/null 2>&1; then
+  ways="${ways:+$ways, }runpodctl"
+fi
+
 problems=0
-if ! command -v "$RUNPODCTL" > /dev/null 2>&1; then
-  echo "run_then_stop_pod: $RUNPODCTL not found" >&2
+if [ -z "$ways" ]; then
+  echo "run_then_stop_pod: no way to stop the pod: no API key with $CURL, and no $RUNPODCTL" >&2
   problems=1
 fi
 if [ -z "$RUNPOD_POD_ID" ]; then
@@ -77,11 +93,7 @@ if [ -z "$RUNPOD_POD_ID" ]; then
   problems=1
 fi
 if [ "$check" = 1 ]; then
-  if [ "$problems" = 0 ]; then
-    key="no API key in the environment"
-    [ -n "$RUNPOD_API_KEY" ] && key="API key present"
-    echo "ok: $RUNPODCTL found, pod id known, $key"
-  fi
+  [ "$problems" = 0 ] && echo "ok: pod id known, can stop through: $ways"
   exit "$problems"
 fi
 if [ "$problems" != 0 ]; then
@@ -94,14 +106,32 @@ say() {
   echo "=== $(date -u +%Y-%m-%dT%H:%M:%SZ) $*" >> "$log"
 }
 
-# Ask RunPod to stop this pod. Tries the current CLI syntax, then the older one.
+# Stop through the REST API. The key goes to curl on a file descriptor, never on a command
+# line. Succeeds only on HTTP 200.
+stop_by_rest() {
+  [ -n "$RUNPOD_API_KEY" ] || return 1
+  command -v "$CURL" > /dev/null 2>&1 || return 1
+  code=$("$CURL" -sS --max-time 30 -o /dev/null -w '%{http_code}' -X POST \
+    --config <(printf 'header = "Authorization: Bearer %s"\n' "$RUNPOD_API_KEY") \
+    -H 'Content-Type: application/json' --data '{"action":"stop"}' \
+    "$RUNPOD_API_URL/pods/$RUNPOD_POD_ID/action" 2>> "$log") || code="no reply"
+  echo "REST stop request answered: $code" >> "$log"
+  [ "$code" = 200 ]
+}
+
+stop_by_runpodctl() {
+  command -v "$RUNPODCTL" > /dev/null 2>&1 || return 1
+  "$RUNPODCTL" pod stop "$RUNPOD_POD_ID" >> "$log" 2>&1 \
+    || "$RUNPODCTL" stop pod "$RUNPOD_POD_ID" >> "$log" 2>&1
+}
+
+# Ask RunPod to stop this pod, by every available route, until one works.
 stop_pod() {
   trap - EXIT INT TERM
   attempt=1
   while [ "$attempt" -le "$STOP_ATTEMPTS" ]; do
     say "stopping this pod (attempt $attempt of $STOP_ATTEMPTS)"
-    if "$RUNPODCTL" pod stop "$RUNPOD_POD_ID" >> "$log" 2>&1 \
-      || "$RUNPODCTL" stop pod "$RUNPOD_POD_ID" >> "$log" 2>&1; then
+    if stop_by_rest || stop_by_runpodctl; then
       say "stop requested"
       return 0
     fi

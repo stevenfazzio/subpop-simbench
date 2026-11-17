@@ -1,6 +1,7 @@
-"""scripts/run_then_stop_pod.sh, against a stand-in for runpodctl that records its calls.
+"""scripts/run_then_stop_pod.sh, against stand-ins for curl and runpodctl that record their
+calls.
 
-Nothing here talks to RunPod: the wrapper is pointed at the stand-in by path, and at a fake
+Nothing here talks to RunPod: the wrapper is pointed at the stand-ins by path, and at a fake
 copy of the main process's environment.
 """
 
@@ -34,10 +35,12 @@ class FakePod:
     def __init__(self, directory: Path):
         self.dir = directory
         self.calls = directory / "runpodctl.calls"
+        self.curl_calls = directory / "curl.calls"
         self.log = directory / "job.log"
         self.env = {
             "PATH": os.environ.get("PATH", os.defpath),
             "RUNPODCTL": str(_fake_runpodctl(directory / "runpodctl", self.calls)),
+            "CURL": str(_fake_curl(directory / "curl", self.curl_calls)),
             "RUNPOD_POD_ID": "pod123",
             "PID1_ENVIRON": str(directory / "no-such-file"),
             "STOP_ATTEMPTS": "2",
@@ -46,6 +49,25 @@ class FakePod:
 
     def __repr__(self) -> str:
         return f"FakePod({self.dir})"
+
+
+def _fake_curl(path: Path, calls: Path) -> Path:
+    """Records its arguments and whether a bearer header arrived, then prints an HTTP status.
+
+    The header reaches curl in a config file on a file descriptor; that path is replaced in
+    the record, and the header's value is never written down.
+    """
+    path.write_text(
+        "#!/bin/sh\n"
+        'config=""; previous=""\n'
+        'for arg in "$@"; do [ "$previous" = --config ] && config=$arg; previous=$arg; done\n'
+        "bearer=no\n"
+        '[ -n "$config" ] && grep -q "Authorization: Bearer" "$config" && bearer=yes\n'
+        f'echo "bearer=$bearer $*" | sed "s#$config#CONFIG#" >> "{calls}"\n'
+        'printf "%s" "${CURL_HTTP:-200}"\n'
+    )
+    path.chmod(0o755)
+    return path
 
 
 @pytest.fixture
@@ -60,6 +82,36 @@ def _run(pod, *args):
 
 def _calls(pod) -> list[str]:
     return pod.calls.read_text().splitlines() if pod.calls.exists() else []
+
+
+def _curl_calls(pod) -> list[str]:
+    return pod.curl_calls.read_text().splitlines() if pod.curl_calls.exists() else []
+
+
+def test_stops_through_the_rest_api_when_it_has_the_pods_key(pod):
+    pod.env["RUNPOD_API_KEY"] = "sk-not-for-logs"
+    result = _run(pod, "--", "true")
+    assert result.returncode == 0
+    (call,) = _curl_calls(pod)
+    assert call.startswith("bearer=yes ")
+    assert "-X POST" in call
+    assert '{"action":"stop"}' in call
+    assert call.endswith("https://api.runpod.io/v2/pods/pod123/action")
+    assert _calls(pod) == []  # runpodctl was not needed
+    recorded = result.stdout + result.stderr + pod.log.read_text() + call
+    assert "sk-not-for-logs" not in recorded
+
+
+def test_falls_back_to_runpodctl_when_the_api_refuses(pod):
+    pod.env["RUNPOD_API_KEY"] = "sk-not-for-logs"
+    pod.env["CURL_HTTP"] = "401"
+    result = _run(pod, "--", "true")
+    assert result.returncode == 0
+    assert len(_curl_calls(pod)) == 1
+    assert _calls(pod) == ["pod stop pod123"]
+    log = pod.log.read_text()
+    assert "REST stop request answered: 401" in log
+    assert "stop requested" in log
 
 
 def test_stops_the_pod_after_success(pod):
@@ -107,9 +159,9 @@ def test_output_reaches_the_log_while_the_job_runs(pod):
     assert _calls(pod) == ["pod stop pod123"]
 
 
-@pytest.mark.parametrize("missing", ["runpodctl", "pod id"])
+@pytest.mark.parametrize("missing", ["any way to stop", "pod id"])
 def test_refuses_to_start_a_job_it_could_not_stop(pod, missing):
-    if missing == "runpodctl":
+    if missing == "any way to stop":  # no runpodctl, and no key for the REST API
         pod.env["RUNPODCTL"] = str(pod.dir / "not-installed")
     else:
         del pod.env["RUNPOD_POD_ID"]
@@ -128,9 +180,18 @@ def test_reads_the_pod_id_from_the_main_process_and_keeps_the_key_quiet(pod):
     pod.env["PID1_ENVIRON"] = str(environ)
     result = _run(pod, "--", "sh", "-c", 'test -n "$RUNPOD_API_KEY" && echo key reached the job')
     assert result.returncode == 0
-    assert _calls(pod) == ["pod stop podXYZ"]
+    (call,) = _curl_calls(pod)
+    assert call.startswith("bearer=yes ") and call.endswith("/pods/podXYZ/action")
     assert "key reached the job" in pod.log.read_text()
-    assert "sk-not-for-logs" not in result.stdout + result.stderr + pod.log.read_text()
+    assert "sk-not-for-logs" not in result.stdout + result.stderr + pod.log.read_text() + call
+
+
+def test_the_rest_api_alone_is_enough_to_start(pod):
+    pod.env["RUNPODCTL"] = str(pod.dir / "not-installed")
+    pod.env["RUNPOD_API_KEY"] = "sk-not-for-logs"
+    result = _run(pod, "--", "true")
+    assert result.returncode == 0
+    assert len(_curl_calls(pod)) == 1
 
 
 def test_falls_back_to_the_older_runpodctl_syntax(pod):
