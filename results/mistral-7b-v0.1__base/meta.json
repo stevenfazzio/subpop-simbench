@@ -1,0 +1,40 @@
+{
+  "finished_at": "2026-11-17T06:04:48+00:00",
+  "identity": {
+    "conditions": [
+      "simbench",
+      "subpop_exact",
+      "subpop_skeleton"
+    ],
+    "limit": null,
+    "model": {
+      "adapter": null,
+      "adapter_revision": null,
+      "base": "mistralai/Mistral-7B-v0.1",
+      "base_revision": "27d67f1b5f57dc0953326b2601d68371d40ea8da",
+      "dtype": "bfloat16",
+      "quantization": null
+    },
+    "prompts_sha256": "c4546895b80831668f170ab61d5ddef7d651c1c80260f168b5922a517240b8e2",
+    "seed": 0
+  },
+  "n_predictions": 27984,
+  "sessions": [
+    {
+      "device": "cuda",
+      "git": {
+        "commit": null,
+        "dirty": null
+      },
+      "gpu": "NVIDIA A40",
+      "peft": "0.21.3",
+      "prompts_to_run": 27984,
+      "started_at": "2026-11-17T05:53:10+00:00",
+      "threads": null,
+      "torch": "2.15.0+cu132",
+      "transformers": "5.23.0",
+      "wall_seconds": 678.8
+    }
+  ],
+  "status": "complete"
+}

@@ -1,0 +1,39 @@
+split,dataset_name,status,items,distinct_questions
+grouped,Afrobarometer,no match,1462,19
+grouped,Afrobarometer,similar wording,69,1
+grouped,ESS,no match,1643,20
+grouped,ISSP,no match,832,18
+grouped,ISSP,same question text only,108,2
+grouped,LatinoBarometro,no match,1245,20
+grouped,OpinionQA,no match,351,5
+grouped,OpinionQA,same question and options,395,8
+grouped,OpinionQA,same question text only,189,3
+grouped,OpinionQA,similar wording,49,1
+pop,Afrobarometer,no match,497,204
+pop,Afrobarometer,similar wording,3,1
+pop,ChaosNLI,no match,500,500
+pop,Choices13k,no match,500,500
+pop,ConspiracyCorr,no match,45,9
+pop,DICES,no match,500,498
+pop,ESS,no match,497,220
+pop,ESS,similar wording,3,1
+pop,GlobalOpinionQA,no match,497,455
+pop,GlobalOpinionQA,similar wording,3,3
+pop,ISSP,no match,499,414
+pop,ISSP,same question text only,1,1
+pop,Jester,no match,136,136
+pop,LatinoBarometro,no match,500,356
+pop,MoralMachine,no match,500,1
+pop,MoralMachineClassic,no match,15,3
+pop,NumberGame,no match,500,500
+pop,OSPsychBig5,no match,250,50
+pop,OSPsychMACH,no match,100,20
+pop,OSPsychMGKT,no match,500,268
+pop,OSPsychRWAS,no match,22,22
+pop,OpinionQA,no match,379,367
+pop,OpinionQA,same question and options,65,63
+pop,OpinionQA,same question text only,20,17
+pop,OpinionQA,similar wording,36,36
+pop,TISP,no match,480,96
+pop,TISP,same question text only,5,1
+pop,WisdomOfCrowds,no match,114,113

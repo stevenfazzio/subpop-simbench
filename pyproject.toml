@@ -1,0 +1,44 @@
+[project]
+name = "subpop-simbench"
+version = "0.1.0"
+description = "Benchmarking SubPOP fine-tuned adapters on SimBench"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "accelerate",
+    "huggingface-hub",
+    "numpy",
+    "pandas",
+    "peft",
+    "plotly>=7.1.0",
+    "pyarrow",
+    "rapidfuzz>=3.14.6",
+    "sentencepiece",
+    "torch",
+    "tqdm",
+    "transformers",
+]
+
+[project.optional-dependencies]
+# 8-bit / 4-bit loading, to match how SimBench ran its open-weight models. CUDA only.
+quant = ["bitsandbytes; sys_platform == 'linux'"]
+
+[dependency-groups]
+dev = ["pytest", "ruff"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/subpop_simbench"]
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["src/subpop_simbench/_vendor"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

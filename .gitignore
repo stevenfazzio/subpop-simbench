@@ -1,0 +1,18 @@
+# Derived or downloaded data. SimBench is CC BY-NC-SA 4.0: fetch it, don't commit it.
+data/
+
+# Inference outputs: in-progress shards are never worth keeping
+results/**/shards/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/

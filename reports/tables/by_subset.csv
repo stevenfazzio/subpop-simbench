@@ -1,0 +1,81 @@
+model,model_name,condition,subset,n,base,adapter,gain
+mistral-7b,Mistral-7B,simbench,all items,13510,7.5235,22.9479,15.4244
+mistral-7b,Mistral-7B,simbench,pop split,7167,3.802,19.9243,16.1223
+mistral-7b,Mistral-7B,simbench,grouped split,6343,11.7284,26.3643,14.6358
+mistral-7b,Mistral-7B,simbench,OpinionQA,1484,31.6385,64.6712,33.0327
+mistral-7b,Mistral-7B,simbench,other opinion surveys,8344,7.6501,20.4988,12.8488
+mistral-7b,Mistral-7B,simbench,non-survey tasks,3682,-2.4828,11.6815,14.1643
+mistral-7b,Mistral-7B,simbench,all but OpinionQA,12026,4.5477,17.7992,13.2516
+mistral-7b,Mistral-7B,simbench,no matching training question,12564,5.7521,20.5569,14.8048
+mistral-7b,Mistral-7B,subpop_skeleton,all items,13510,9.3964,22.7799,13.3835
+mistral-7b,Mistral-7B,subpop_skeleton,pop split,7167,7.0588,19.4189,12.3601
+mistral-7b,Mistral-7B,subpop_skeleton,grouped split,6343,12.0377,26.5776,14.5399
+mistral-7b,Mistral-7B,subpop_skeleton,OpinionQA,1484,24.9152,68.7387,43.8236
+mistral-7b,Mistral-7B,subpop_skeleton,other opinion surveys,8344,8.2959,19.9299,11.6341
+mistral-7b,Mistral-7B,subpop_skeleton,non-survey tasks,3682,5.6357,10.7152,5.0795
+mistral-7b,Mistral-7B,subpop_skeleton,all but OpinionQA,12026,7.4814,17.1086,9.6272
+mistral-7b,Mistral-7B,subpop_skeleton,no matching training question,12564,8.0583,20.1002,12.042
+mistral-7b,Mistral-7B,subpop_exact,all items,964,28.3796,76.6072,48.2276
+mistral-7b,Mistral-7B,subpop_exact,grouped split,964,28.3796,76.6072,48.2276
+mistral-7b,Mistral-7B,subpop_exact,OpinionQA,964,28.3796,76.6072,48.2276
+mistral-7b,Mistral-7B,subpop_exact,no matching training question,344,26.4645,74.6456,48.1812
+llama-2-7b,Llama-2-7B,simbench,all items,13510,-9.5024,3.1916,12.694
+llama-2-7b,Llama-2-7B,simbench,pop split,7167,-10.986,-1.3563,9.6297
+llama-2-7b,Llama-2-7B,simbench,grouped split,6343,-7.8261,8.3302,16.1563
+llama-2-7b,Llama-2-7B,simbench,OpinionQA,1484,11.2322,39.176,27.9439
+llama-2-7b,Llama-2-7B,simbench,other opinion surveys,8344,-11.5006,2.6861,14.1867
+llama-2-7b,Llama-2-7B,simbench,non-survey tasks,3682,-13.331,-10.1663,3.1648
+llama-2-7b,Llama-2-7B,simbench,all but OpinionQA,12026,-12.061,-1.2489,10.8121
+llama-2-7b,Llama-2-7B,simbench,no matching training question,12564,-11.1933,0.8649,12.0582
+llama-2-7b,Llama-2-7B,subpop_skeleton,all items,13510,-9.9609,11.4424,21.4033
+llama-2-7b,Llama-2-7B,subpop_skeleton,pop split,7167,-11.0462,4.4919,15.5381
+llama-2-7b,Llama-2-7B,subpop_skeleton,grouped split,6343,-8.7346,19.2959,28.0305
+llama-2-7b,Llama-2-7B,subpop_skeleton,OpinionQA,1484,21.7058,66.8327,45.127
+llama-2-7b,Llama-2-7B,subpop_skeleton,other opinion surveys,8344,-17.6706,9.8414,27.512
+llama-2-7b,Llama-2-7B,subpop_skeleton,non-survey tasks,3682,-5.2525,-7.2541,-2.0016
+llama-2-7b,Llama-2-7B,subpop_skeleton,all but OpinionQA,12026,-13.8686,4.6073,18.4758
+llama-2-7b,Llama-2-7B,subpop_skeleton,no matching training question,12564,-12.4494,8.0377,20.487
+llama-2-7b,Llama-2-7B,subpop_exact,all items,964,27.091,75.886,48.795
+llama-2-7b,Llama-2-7B,subpop_exact,grouped split,964,27.091,75.886,48.795
+llama-2-7b,Llama-2-7B,subpop_exact,OpinionQA,964,27.091,75.886,48.795
+llama-2-7b,Llama-2-7B,subpop_exact,no matching training question,344,27.202,72.1176,44.9155
+llama-2-13b,Llama-2-13B,simbench,all items,13510,-42.3633,20.5666,62.9299
+llama-2-13b,Llama-2-13B,simbench,pop split,7167,-44.6448,15.9109,60.5557
+llama-2-13b,Llama-2-13B,simbench,grouped split,6343,-39.7854,25.8272,65.6126
+llama-2-13b,Llama-2-13B,simbench,OpinionQA,1484,-20.0177,61.3669,81.3846
+llama-2-13b,Llama-2-13B,simbench,other opinion surveys,8344,-45.3223,19.5604,64.8827
+llama-2-13b,Llama-2-13B,simbench,non-survey tasks,3682,-44.6641,6.4026,51.0666
+llama-2-13b,Llama-2-13B,simbench,all but OpinionQA,12026,-45.1207,15.5319,60.6526
+llama-2-13b,Llama-2-13B,simbench,no matching training question,12564,-44.4576,17.8823,62.3399
+llama-2-13b,Llama-2-13B,subpop_skeleton,all items,13510,-9.1905,23.3344,32.5249
+llama-2-13b,Llama-2-13B,subpop_skeleton,pop split,7167,-12.0652,19.9968,32.062
+llama-2-13b,Llama-2-13B,subpop_skeleton,grouped split,6343,-5.9423,27.1056,33.0479
+llama-2-13b,Llama-2-13B,subpop_skeleton,OpinionQA,1484,13.1543,68.8416,55.6873
+llama-2-13b,Llama-2-13B,subpop_skeleton,other opinion surveys,8344,-13.1809,19.5652,32.7462
+llama-2-13b,Llama-2-13B,subpop_skeleton,non-survey tasks,3682,-9.1534,13.5347,22.6881
+llama-2-13b,Llama-2-13B,subpop_skeleton,all but OpinionQA,12026,-11.9478,17.7189,29.6667
+llama-2-13b,Llama-2-13B,subpop_skeleton,no matching training question,12564,-11.1309,20.5919,31.7228
+llama-2-13b,Llama-2-13B,subpop_exact,all items,964,25.2468,75.9864,50.7396
+llama-2-13b,Llama-2-13B,subpop_exact,grouped split,964,25.2468,75.9864,50.7396
+llama-2-13b,Llama-2-13B,subpop_exact,OpinionQA,964,25.2468,75.9864,50.7396
+llama-2-13b,Llama-2-13B,subpop_exact,no matching training question,344,20.9902,68.7264,47.7362
+llama-3-70b,Llama-3-70B,simbench,all items,13510,4.011,34.5696,30.5586
+llama-3-70b,Llama-3-70B,simbench,pop split,7167,0.8319,31.1477,30.3158
+llama-3-70b,Llama-3-70B,simbench,grouped split,6343,7.6031,38.4361,30.833
+llama-3-70b,Llama-3-70B,simbench,OpinionQA,1484,37.2554,68.1747,30.9193
+llama-3-70b,Llama-3-70B,simbench,other opinion surveys,8344,-0.6527,31.9564,32.6091
+llama-3-70b,Llama-3-70B,simbench,non-survey tasks,3682,1.181,26.9474,25.7664
+llama-3-70b,Llama-3-70B,simbench,all but OpinionQA,12026,-0.0913,30.4228,30.5141
+llama-3-70b,Llama-3-70B,simbench,no matching training question,12564,1.4541,32.3811,30.927
+llama-3-70b,Llama-3-70B,subpop_skeleton,all items,13510,4.5185,30.7101,26.1915
+llama-3-70b,Llama-3-70B,subpop_skeleton,pop split,7167,0.7694,28.1111,27.3417
+llama-3-70b,Llama-3-70B,subpop_skeleton,grouped split,6343,8.7547,33.6466,24.8919
+llama-3-70b,Llama-3-70B,subpop_skeleton,OpinionQA,1484,31.1572,71.7613,40.6041
+llama-3-70b,Llama-3-70B,subpop_skeleton,other opinion surveys,8344,1.0808,27.1309,26.0501
+llama-3-70b,Llama-3-70B,subpop_skeleton,non-survey tasks,3682,1.5726,22.2756,20.703
+llama-3-70b,Llama-3-70B,subpop_skeleton,all but OpinionQA,12026,1.2314,25.6444,24.413
+llama-3-70b,Llama-3-70B,subpop_skeleton,no matching training question,12564,2.2782,27.767,25.4888
+llama-3-70b,Llama-3-70B,subpop_exact,all items,964,53.5217,79.3415,25.8199
+llama-3-70b,Llama-3-70B,subpop_exact,grouped split,964,53.5217,79.3415,25.8199
+llama-3-70b,Llama-3-70B,subpop_exact,OpinionQA,964,53.5217,79.3415,25.8199
+llama-3-70b,Llama-3-70B,subpop_exact,no matching training question,344,52.4979,74.5352,22.0373

@@ -1,0 +1,40 @@
+{
+  "finished_at": "2026-11-17T13:43:48+00:00",
+  "identity": {
+    "conditions": [
+      "simbench",
+      "subpop_exact",
+      "subpop_skeleton"
+    ],
+    "limit": null,
+    "model": {
+      "adapter": "jjssuh/llama-2-13b-subpop",
+      "adapter_revision": "800d3776c5e56b4b9d0b9e8b455c3a40ba311eda",
+      "base": "meta-llama/Llama-2-13b-hf",
+      "base_revision": "5c31dfb671ce7cfe2d7bb7c04375e44c55e815b1",
+      "dtype": "bfloat16",
+      "quantization": null
+    },
+    "prompts_sha256": "c4546895b80831668f170ab61d5ddef7d651c1c80260f168b5922a517240b8e2",
+    "seed": 0
+  },
+  "n_predictions": 27984,
+  "sessions": [
+    {
+      "device": "cuda",
+      "git": {
+        "commit": null,
+        "dirty": null
+      },
+      "gpu": "NVIDIA A40",
+      "peft": "0.21.3",
+      "prompts_to_run": 27984,
+      "started_at": "2026-11-17T13:21:56+00:00",
+      "threads": null,
+      "torch": "2.15.0+cu132",
+      "transformers": "5.23.0",
+      "wall_seconds": 1281.8
+    }
+  ],
+  "status": "complete"
+}

@@ -1,0 +1,158 @@
+"""Base-versus-adapter analysis of finished runs.
+
+Every comparison is paired: the same items under the same prompt condition, one model with
+and without its SubPOP adapter.
+"""
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+from subpop_simbench.prompts import CONDITIONS
+from subpop_simbench.results import load_run
+from subpop_simbench.scoring import dataset_norms
+
+# label -> (run-tag stem, display name). A pair is the runs <stem>__base and <stem>__subpop.
+MODEL_PAIRS = {
+    "mistral-7b": ("mistral-7b-v0.1", "Mistral-7B"),
+    "llama-2-7b": ("llama-2-7b", "Llama-2-7B"),
+    "llama-2-13b": ("llama-2-13b", "Llama-2-13B"),
+    "llama-3-70b": ("llama-3-70b", "Llama-3-70B"),
+}
+
+# SimBench datasets that are attitude surveys of the general public, like SubPOP's training
+# data. Everything else is psychometric scales, judgement tasks and decision tasks.
+OTHER_OPINION_SURVEYS = frozenset(
+    {"ESS", "ISSP", "GlobalOpinionQA", "Afrobarometer", "LatinoBarometro", "TISP"}
+)
+TIERS = ("OpinionQA", "other opinion surveys", "non-survey tasks")
+
+# Temperatures tried by the calibration control. 64 is flat enough to score as uniform.
+TEMPERATURES = np.round(np.geomspace(0.25, 64, 65), 4)
+
+
+def tier_of(dataset_name: str) -> str:
+    if dataset_name == "OpinionQA":
+        return TIERS[0]
+    return TIERS[1] if dataset_name in OTHER_OPINION_SURVEYS else TIERS[2]
+
+
+def prepare_items(items: pd.DataFrame) -> pd.DataFrame:
+    """Items with the score's per-dataset norm and the dataset tier attached."""
+    out = items.copy()
+    out["norm"] = out["dataset_name"].map(dataset_norms(items))
+    out["tier"] = out["dataset_name"].map(tier_of)
+    return out
+
+
+def pad(dists, width: int) -> np.ndarray:
+    """Stack distributions of different lengths into one zero-padded (n, width) array."""
+    out = np.zeros((len(dists), width))
+    for i, dist in enumerate(dists):
+        out[i, : len(dist)] = dist
+    return out
+
+
+def scores_at(
+    pred: np.ndarray, human: np.ndarray, norm: np.ndarray, temperature: float = 1.0
+) -> np.ndarray:
+    """Per-item SimBench score after raising predictions to the power 1/temperature.
+
+    Padded options have probability zero and stay at zero, so they never take mass.
+    """
+    with np.errstate(divide="ignore"):
+        logp = np.where(pred > 0, np.log(pred), -np.inf) / temperature
+    logp -= logp.max(axis=1, keepdims=True)
+    q = np.exp(logp)
+    q /= q.sum(axis=1, keepdims=True)
+    return 100.0 * (1.0 - 0.5 * np.abs(human - q).sum(axis=1) / norm)
+
+
+def bootstrap_ci(x: np.ndarray, n_boot: int = 2000, seed: int = 0) -> tuple[float, float]:
+    """95% percentile interval for the mean of x, resampling items."""
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, len(x), size=(n_boot, len(x)))
+    low, high = np.quantile(x[idx].mean(axis=1), [0.025, 0.975])
+    return float(low), float(high)
+
+
+def best_temperature(
+    pred: np.ndarray, human: np.ndarray, norm: np.ndarray, temperatures=TEMPERATURES
+) -> tuple[float, float]:
+    """(mean score, temperature) at the single temperature that maximises the mean score.
+
+    Fitted on the items it is scored on, so it flatters whichever model it is applied to.
+    """
+    means = np.array([scores_at(pred, human, norm, t).mean() for t in temperatures])
+    best = int(means.argmax())
+    return float(means[best]), float(temperatures[best])
+
+
+def best_temperature_per_group(
+    pred: np.ndarray, human: np.ndarray, norm: np.ndarray, groups, temperatures=TEMPERATURES
+) -> np.ndarray:
+    """Per-item scores when every group (e.g. dataset) gets its own best temperature."""
+    out = np.empty(len(pred))
+    for idx in pd.Series(np.arange(len(pred))).groupby(np.asarray(groups)).indices.values():
+        grids = [scores_at(pred[idx], human[idx], norm[idx], t) for t in temperatures]
+        out[idx] = grids[int(np.argmax([g.mean() for g in grids]))]
+    return out
+
+
+@dataclass
+class Pair:
+    """One model's base and adapter runs under one condition, aligned row for row."""
+
+    frame: pd.DataFrame  # the item columns, in the same row order as the arrays
+    human: np.ndarray
+    norm: np.ndarray
+    pred_base: np.ndarray
+    pred_adapter: np.ndarray
+    mass_base: np.ndarray
+    mass_adapter: np.ndarray
+
+    @property
+    def score_base(self) -> np.ndarray:
+        return scores_at(self.pred_base, self.human, self.norm)
+
+    @property
+    def score_adapter(self) -> np.ndarray:
+        return scores_at(self.pred_adapter, self.human, self.norm)
+
+
+def load_pairs(items: pd.DataFrame, results_dir: Path, stem: str) -> dict[str, Pair] | None:
+    """Pairs per condition for one model, or None unless both runs are complete on disk.
+
+    `items` must come from `prepare_items`.
+    """
+    dirs = {kind: Path(results_dir) / f"{stem}__{kind}" for kind in ("base", "subpop")}
+    if not all((d / "predictions.parquet").exists() for d in dirs.values()):
+        return None
+    runs = {kind: load_run(d) for kind, d in dirs.items()}
+    width = int(items["n_options"].max())
+    pairs = {}
+    for condition in CONDITIONS:
+        aligned = {}
+        for kind, run in runs.items():
+            rows = run.loc[run["condition"] == condition, ["item_id", "pred", "answer_mass"]]
+            merged = rows.merge(items, on="item_id", how="left", validate="one_to_one")
+            assert merged["norm"].notna().all(), f"{stem}: predictions for unknown items"
+            aligned[kind] = merged.sort_values("item_id").reset_index(drop=True)
+        base, adapter = aligned["base"], aligned["subpop"]
+        if base.empty and adapter.empty:
+            continue
+        assert base["item_id"].equals(adapter["item_id"]), (
+            f"{stem} {condition}: base and adapter runs cover different items"
+        )
+        pairs[condition] = Pair(
+            frame=base.drop(columns=["pred", "answer_mass"]),
+            human=pad(base["human_dist"], width),
+            norm=base["norm"].to_numpy(),
+            pred_base=pad(base["pred"], width),
+            pred_adapter=pad(adapter["pred"], width),
+            mass_base=base["answer_mass"].to_numpy(),
+            mass_adapter=adapter["answer_mass"].to_numpy(),
+        )
+    return pairs

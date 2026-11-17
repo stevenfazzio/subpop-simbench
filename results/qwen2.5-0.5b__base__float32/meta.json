@@ -1,0 +1,38 @@
+{
+  "finished_at": "2026-11-17T05:52:15+00:00",
+  "identity": {
+    "conditions": [
+      "simbench"
+    ],
+    "limit": null,
+    "model": {
+      "adapter": null,
+      "adapter_revision": null,
+      "base": "Qwen/Qwen2.5-0.5B",
+      "base_revision": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+      "dtype": "float32",
+      "quantization": null
+    },
+    "prompts_sha256": "c4546895b80831668f170ab61d5ddef7d651c1c80260f168b5922a517240b8e2",
+    "seed": 0
+  },
+  "n_predictions": 13510,
+  "sessions": [
+    {
+      "device": "cuda",
+      "git": {
+        "commit": null,
+        "dirty": null
+      },
+      "gpu": "NVIDIA A40",
+      "peft": "0.21.3",
+      "prompts_to_run": 13510,
+      "started_at": "2026-11-17T05:49:28+00:00",
+      "threads": null,
+      "torch": "2.15.0+cu132",
+      "transformers": "5.23.0",
+      "wall_seconds": 163.7
+    }
+  ],
+  "status": "complete"
+}

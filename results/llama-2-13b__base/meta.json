@@ -1,0 +1,54 @@
+{
+  "finished_at": "2026-11-17T13:21:50+00:00",
+  "identity": {
+    "conditions": [
+      "simbench",
+      "subpop_exact",
+      "subpop_skeleton"
+    ],
+    "limit": null,
+    "model": {
+      "adapter": null,
+      "adapter_revision": null,
+      "base": "meta-llama/Llama-2-13b-hf",
+      "base_revision": "5c31dfb671ce7cfe2d7bb7c04375e44c55e815b1",
+      "dtype": "bfloat16",
+      "quantization": null
+    },
+    "prompts_sha256": "c4546895b80831668f170ab61d5ddef7d651c1c80260f168b5922a517240b8e2",
+    "seed": 0
+  },
+  "n_predictions": 27984,
+  "sessions": [
+    {
+      "device": "cuda",
+      "git": {
+        "commit": null,
+        "dirty": null
+      },
+      "gpu": "NVIDIA A40",
+      "peft": "0.21.3",
+      "prompts_to_run": 27984,
+      "started_at": "2026-11-17T12:59:36+00:00",
+      "threads": null,
+      "torch": "2.15.0+cu132",
+      "transformers": "5.23.0"
+    },
+    {
+      "device": "cuda",
+      "git": {
+        "commit": null,
+        "dirty": null
+      },
+      "gpu": "NVIDIA A40",
+      "peft": "0.21.3",
+      "prompts_to_run": 27984,
+      "started_at": "2026-11-17T13:01:46+00:00",
+      "threads": null,
+      "torch": "2.15.0+cu132",
+      "transformers": "5.23.0",
+      "wall_seconds": 1178.1
+    }
+  ],
+  "status": "complete"
+}

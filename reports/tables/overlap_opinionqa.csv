@@ -1,0 +1,81 @@
+model,model_name,condition,split,status,n,base,adapter,gain
+mistral-7b,Mistral-7B,simbench,pop,same question and options,65,20.6788,68.1193,47.4405
+mistral-7b,Mistral-7B,simbench,pop,same question text only,20,23.8983,76.1602,52.2619
+mistral-7b,Mistral-7B,simbench,pop,similar wording,36,17.026,66.0791,49.0531
+mistral-7b,Mistral-7B,simbench,pop,no match,379,16.3599,59.3427,42.9828
+mistral-7b,Mistral-7B,simbench,grouped,same question and options,395,38.5214,67.7146,29.1931
+mistral-7b,Mistral-7B,simbench,grouped,same question text only,189,37.4477,66.0488,28.6012
+mistral-7b,Mistral-7B,simbench,grouped,similar wording,49,42.9334,57.8464,14.9129
+mistral-7b,Mistral-7B,simbench,grouped,no match,351,39.6548,65.7734,26.1186
+mistral-7b,Mistral-7B,subpop_skeleton,pop,same question and options,65,20.3833,72.8267,52.4434
+mistral-7b,Mistral-7B,subpop_skeleton,pop,same question text only,20,16.4215,78.611,62.1895
+mistral-7b,Mistral-7B,subpop_skeleton,pop,similar wording,36,15.0595,76.4606,61.4011
+mistral-7b,Mistral-7B,subpop_skeleton,pop,no match,379,13.3209,63.7264,50.4055
+mistral-7b,Mistral-7B,subpop_skeleton,grouped,same question and options,395,37.0712,69.4413,32.3701
+mistral-7b,Mistral-7B,subpop_skeleton,grouped,same question text only,189,23.6418,70.5893,46.9475
+mistral-7b,Mistral-7B,subpop_skeleton,grouped,similar wording,49,46.4349,71.1358,24.7009
+mistral-7b,Mistral-7B,subpop_skeleton,grouped,no match,351,23.77,69.9177,46.1477
+mistral-7b,Mistral-7B,subpop_exact,grouped,same question and options,387,28.9807,80.1713,51.1906
+mistral-7b,Mistral-7B,subpop_exact,grouped,same question text only,185,28.4526,72.9064,44.4538
+mistral-7b,Mistral-7B,subpop_exact,grouped,similar wording,48,36.9767,76.1925,39.2159
+mistral-7b,Mistral-7B,subpop_exact,grouped,no match,344,26.4645,74.6456,48.1812
+llama-2-7b,Llama-2-7B,simbench,pop,same question and options,65,-6.7,45.0477,51.7476
+llama-2-7b,Llama-2-7B,simbench,pop,same question text only,20,-4.0054,40.3006,44.3061
+llama-2-7b,Llama-2-7B,simbench,pop,similar wording,36,-8.2437,35.0521,43.2957
+llama-2-7b,Llama-2-7B,simbench,pop,no match,379,-5.4253,35.1623,40.5876
+llama-2-7b,Llama-2-7B,simbench,grouped,same question and options,395,22.144,44.8171,22.6732
+llama-2-7b,Llama-2-7B,simbench,grouped,same question text only,189,25.5312,31.1328,5.6017
+llama-2-7b,Llama-2-7B,simbench,grouped,similar wording,49,10.2258,26.4356,16.2098
+llama-2-7b,Llama-2-7B,simbench,grouped,no match,351,15.5663,42.5427,26.9764
+llama-2-7b,Llama-2-7B,subpop_skeleton,pop,same question and options,65,-7.047,73.6266,80.6736
+llama-2-7b,Llama-2-7B,subpop_skeleton,pop,same question text only,20,2.6087,70.5413,67.9326
+llama-2-7b,Llama-2-7B,subpop_skeleton,pop,similar wording,36,-11.2758,71.5264,82.8022
+llama-2-7b,Llama-2-7B,subpop_skeleton,pop,no match,379,-9.2958,58.0059,67.3018
+llama-2-7b,Llama-2-7B,subpop_skeleton,grouped,same question and options,395,39.5159,70.635,31.1191
+llama-2-7b,Llama-2-7B,subpop_skeleton,grouped,same question text only,189,34.1328,70.4717,36.3389
+llama-2-7b,Llama-2-7B,subpop_skeleton,grouped,similar wording,49,34.5218,50.8374,16.3156
+llama-2-7b,Llama-2-7B,subpop_skeleton,grouped,no match,351,36.4525,70.4075,33.955
+llama-2-7b,Llama-2-7B,subpop_exact,grouped,same question and options,387,26.867,79.9892,53.1222
+llama-2-7b,Llama-2-7B,subpop_exact,grouped,same question text only,185,26.8136,71.2956,44.482
+llama-2-7b,Llama-2-7B,subpop_exact,grouped,similar wording,48,29.1696,87.5032,58.3336
+llama-2-7b,Llama-2-7B,subpop_exact,grouped,no match,344,27.202,72.1176,44.9155
+llama-2-13b,Llama-2-13B,simbench,pop,same question and options,65,-51.8993,61.9781,113.8773
+llama-2-13b,Llama-2-13B,simbench,pop,same question text only,20,-45.0261,64.399,109.4251
+llama-2-13b,Llama-2-13B,simbench,pop,similar wording,36,-54.046,62.69,116.7359
+llama-2-13b,Llama-2-13B,simbench,pop,no match,379,-38.2494,53.8667,92.1162
+llama-2-13b,Llama-2-13B,simbench,grouped,same question and options,395,-3.0473,66.0571,69.1043
+llama-2-13b,Llama-2-13B,simbench,grouped,same question text only,189,-7.0845,67.7042,74.7887
+llama-2-13b,Llama-2-13B,simbench,grouped,similar wording,49,-14.0245,72.8889,86.9134
+llama-2-13b,Llama-2-13B,simbench,grouped,no match,351,-16.4111,58.7448,75.1559
+llama-2-13b,Llama-2-13B,subpop_skeleton,pop,same question and options,65,-8.0725,69.9883,78.0608
+llama-2-13b,Llama-2-13B,subpop_skeleton,pop,same question text only,20,-4.0862,76.8595,80.9457
+llama-2-13b,Llama-2-13B,subpop_skeleton,pop,similar wording,36,-13.0066,76.1131,89.1197
+llama-2-13b,Llama-2-13B,subpop_skeleton,pop,no match,379,-7.437,63.4861,70.923
+llama-2-13b,Llama-2-13B,subpop_skeleton,grouped,same question and options,395,30.9028,72.5864,41.6836
+llama-2-13b,Llama-2-13B,subpop_skeleton,grouped,same question text only,189,20.9284,74.9208,53.9924
+llama-2-13b,Llama-2-13B,subpop_skeleton,grouped,similar wording,49,27.9862,80.5206,52.5344
+llama-2-13b,Llama-2-13B,subpop_skeleton,grouped,no match,351,16.7544,64.091,47.3366
+llama-2-13b,Llama-2-13B,subpop_exact,grouped,same question and options,387,27.6016,80.9397,53.3381
+llama-2-13b,Llama-2-13B,subpop_exact,grouped,same question text only,185,27.9727,78.2979,50.3252
+llama-2-13b,Llama-2-13B,subpop_exact,grouped,similar wording,48,26.2607,79.1721,52.9113
+llama-2-13b,Llama-2-13B,subpop_exact,grouped,no match,344,20.9902,68.7264,47.7362
+llama-3-70b,Llama-3-70B,simbench,pop,same question and options,65,12.9685,66.5315,53.563
+llama-3-70b,Llama-3-70B,simbench,pop,same question text only,20,15.8842,71.4375,55.5533
+llama-3-70b,Llama-3-70B,simbench,pop,similar wording,36,6.9495,68.2804,61.3309
+llama-3-70b,Llama-3-70B,simbench,pop,no match,379,15.4524,63.4839,48.0315
+llama-3-70b,Llama-3-70B,simbench,grouped,same question and options,395,54.049,67.5554,13.5063
+llama-3-70b,Llama-3-70B,simbench,grouped,same question text only,189,48.1636,74.4321,26.2685
+llama-3-70b,Llama-3-70B,simbench,grouped,similar wording,49,38.1421,66.6273,28.4853
+llama-3-70b,Llama-3-70B,simbench,grouped,no match,351,44.7248,70.8908,26.1659
+llama-3-70b,Llama-3-70B,subpop_skeleton,pop,same question and options,65,24.6378,75.9828,51.345
+llama-3-70b,Llama-3-70B,subpop_skeleton,pop,same question text only,20,15.9377,72.5446,56.6069
+llama-3-70b,Llama-3-70B,subpop_skeleton,pop,similar wording,36,14.0282,71.8366,57.8085
+llama-3-70b,Llama-3-70B,subpop_skeleton,pop,no match,379,14.4051,65.5313,51.1261
+llama-3-70b,Llama-3-70B,subpop_skeleton,grouped,same question and options,395,47.9476,77.5284,29.5807
+llama-3-70b,Llama-3-70B,subpop_skeleton,grouped,same question text only,189,34.1802,74.8713,40.6911
+llama-3-70b,Llama-3-70B,subpop_skeleton,grouped,similar wording,49,20.6563,75.0455,54.3892
+llama-3-70b,Llama-3-70B,subpop_skeleton,grouped,no match,351,34.0197,69.0311,35.0113
+llama-3-70b,Llama-3-70B,subpop_exact,grouped,same question and options,387,52.5914,80.2479,27.6565
+llama-3-70b,Llama-3-70B,subpop_exact,grouped,same question text only,185,58.4471,83.8904,25.4433
+llama-3-70b,Llama-3-70B,subpop_exact,grouped,similar wording,48,49.3753,88.9475,39.5722
+llama-3-70b,Llama-3-70B,subpop_exact,grouped,no match,344,52.4979,74.5352,22.0373
