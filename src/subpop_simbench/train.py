@@ -102,6 +102,11 @@ class Encoded:
     targets: np.ndarray  # (n, MAX_OPTIONS)
 
 
+def _say(message: str) -> None:
+    """Print a progress line at once, so a log shows it even when output is piped."""
+    print(message, flush=True)
+
+
 def label_token_ids(tokenizer) -> list[int]:
     """SubPOP's training labels: the last token id of " A", " B", ... " J"."""
     return [
@@ -283,7 +288,7 @@ def train(
                 "Use another --tag, or delete that directory if it is no longer wanted."
             )
         if previous["status"] != "running":
-            print(f"{tag}: already finished ({previous['status']}) at {run_dir}")
+            _say(f"{tag}: already finished ({previous['status']}) at {run_dir}")
             return run_dir
         earlier_sessions = previous.get("sessions", [])
 
@@ -300,8 +305,8 @@ def train(
         raise SystemExit(f"{examples_path} needs both training and validation examples")
     label_ids, pad_id = label_token_ids(tokenizer), pad_token_id(tokenizer)
     first = tokenizer.convert_ids_to_tokens(train_set.input_ids[0][:4])
-    print(f"{tag}: {n_train:,} training and {len(val_set.input_ids):,} validation examples")
-    print(f"{tag}: prompts start {first} under tokenization={config.tokenization!r}")
+    _say(f"{tag}: {n_train:,} training and {len(val_set.input_ids):,} validation examples")
+    _say(f"{tag}: prompts start {first} under tokenization={config.tokenization!r}")
 
     steps_per_epoch = math.ceil(n_train / config.batch_size)
     total_steps = steps_per_epoch * config.epochs
@@ -316,7 +321,7 @@ def train(
         set_peft_model_state_dict(model, state["adapter"])
         optimizer.load_state_dict(state["optimizer"])
         history, start_epoch = state["history"], state["epoch"]
-        print(f"{tag}: resuming after epoch {start_epoch} of {config.epochs}")
+        _say(f"{tag}: resuming after epoch {start_epoch} of {config.epochs}")
 
     session = {
         "started_at": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -365,10 +370,9 @@ def train(
             steps += 1
             if log_every and steps % log_every == 0:
                 rate = tokens / (time.monotonic() - started)
-                print(
+                _say(
                     f"{tag}: epoch {epoch + 1}, step {steps}/{steps_per_epoch}, "
                     f"loss {loss_sum / steps:.4f}, lr {lr:.2e}, {rate:,.0f} tok/s",
-                    flush=True,
                 )
         train_seconds = time.monotonic() - started
         val_loss = evaluate(model, val_set, label_ids, pad_id, micro_batch_size, amp)
@@ -385,10 +389,9 @@ def train(
                 "tokens_per_second": round(tokens / train_seconds, 1),
             }
         )
-        print(
+        _say(
             f"{tag}: epoch {epoch + 1} done, train loss {history[-1]['train_loss']:.4f}, "
             f"validation loss {val_loss:.4f}, {train_seconds / 60:.1f} min",
-            flush=True,
         )
         if not stopped_early:
             # Adapter first, then the state that says the epoch is finished.
@@ -417,5 +420,5 @@ def train(
     meta["status"] = "stopped_at_max_steps" if stopped_early else "complete"
     meta["finished_at"] = datetime.now(UTC).isoformat(timespec="seconds")
     write_json_safely(meta, meta_path)
-    print(f"{tag}: {meta['status']}; results in {run_dir}")
+    _say(f"{tag}: {meta['status']}; results in {run_dir}")
     return run_dir

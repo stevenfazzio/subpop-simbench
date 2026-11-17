@@ -327,8 +327,10 @@ still runs.
 
 ## Training an adapter
 
-**Status: built and tested on a tiny random model only. No adapter has been trained on a
-real model with this code yet, so nothing in the Results section depends on it.**
+**Status: no full training run yet, so nothing in the Results section depends on this
+code.** A 200-step trial on Mistral-7B ran cleanly on an A40. It cut the loss on the
+validation questions from 0.319 (base model) to 0.093; SubPOP's released adapter scores
+0.034 there, though it has probably trained on most of those questions.
 
 SubPOP's released adapters fit only their four base models. To try another base model, the
 repo can train an adapter with SubPOP's recipe. Its first job is to retrain the Mistral-7B
@@ -363,6 +365,29 @@ are copied even though they look odd:
 The full list of what is copied and what differs is at the top of
 `src/subpop_simbench/train.py`. Training examples and trained adapters derive from the
 gated SubPOP data and are not committed.
+
+### Long runs on a rented pod
+
+On an A40, Mistral-7B trains at about 2,250 tokens a second: 1.2 hours an epoch, using
+41 GB of GPU memory at `--micro-batch-size 16`. Twenty epochs is about a day, longer than
+the session that starts it, and a pod bills until someone stops it.
+`scripts/run_then_stop_pod.sh` runs a job, writes its output to a log as it is produced,
+and stops the pod when the job ends, whether it finished, failed or hit its deadline:
+
+```bash
+scripts/run_then_stop_pod.sh --max-hours 30 --log /workspace/train.log -- \
+    uv run python scripts/train_adapter.py --tag mistral-7b-v0.1__retrain \
+    --base mistralai/Mistral-7B-v0.1 --tokenization bos_string --micro-batch-size 16
+```
+
+- **Stopping a pod clears its container disk.** Create the pod with a volume disk mounted
+  at `/workspace`, and keep the repository, the model cache and `data/adapters` there.
+- **A stopped pod is not free and not always reachable.** It bills a little for the volume
+  disk, and it can only be started again when its host has a free GPU. Copy results off
+  while the pod runs when possible, and terminate it once they are copied.
+- **Not yet tried on a real pod.** The wrapper is tested against a stand-in for
+  `runpodctl`. Run it once with a trivial job (`-- true`) on a fresh pod before trusting it
+  with a long one; `--check` reports whether it can find `runpodctl` and the pod's id.
 
 ## Runs
 
