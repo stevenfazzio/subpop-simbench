@@ -2,10 +2,10 @@
 
     uv run python scripts/make_figures.py
 
-Writes reports/figures/subpop_on_simbench.html: one page, three charts. Each chart is a set
+Writes reports/figures/subpop_on_simbench.html: one page, four charts. Each chart is a set
 of dumbbells running from a base model's SimBench score to its score with the SubPOP
-adapter. A selector at the top switches all three between the two prompt formats that
-cover the whole benchmark.
+adapter, next to what a predictor that never reads the question scores. A selector at the
+top switches all four between the two prompt formats that cover the whole benchmark.
 """
 
 import html
@@ -45,20 +45,26 @@ THEMES = {
     "light": {
         "surface": "#fcfcfb", "ink": "#0b0b0b", "ink2": "#52514e", "muted": "#898781",
         "grid": "#e1e0d9", "axis": "#c3c2b7",
-        "base": "#86b6ef", "adapter": "#1c5cab", "published": "#898781",
+        "base": "#86b6ef", "adapter": "#1c5cab", "published": "#898781", "blind": "#52514e",
     },
     "dark": {
         "surface": "#1a1a19", "ink": "#f0efec", "ink2": "#c3c2b7", "muted": "#898781",
         "grid": "#2c2c2a", "axis": "#383835",
-        "base": "#184f95", "adapter": "#6da7ec", "published": "#898781",
+        "base": "#184f95", "adapter": "#6da7ec", "published": "#898781", "blind": "#c3c2b7",
     },
 }  # fmt: skip
 T = THEMES["light"]
 FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif'
+LEGEND_RANK = {"base": 1, "adapter": 2, "published": 3, "blind": 4}
 SERIES = {
     "base": "Base model",
     "adapter": "With SubPOP adapter",
     "published": "Published on SimBench",
+    "blind": "Never reads the question",
+}
+BLIND_LABELS = {
+    "dataset": "Question-blind: each dataset's typical shape",
+    "benchmark": "Question-blind: one shape per option count",
 }
 SUBSET_LABELS = {
     "all items": "All 13,510 items",
@@ -76,12 +82,32 @@ def _hover(title: str) -> str:
         "With adapter: <b>%{customdata[1]:.1f}</b><br>"
         "Base model: <b>%{customdata[0]:.1f}</b><br>"
         "Gain: %{customdata[2]:+.1f}<br>"
+        "Never reads the question: %{customdata[4]:.1f}<br>"
         "Items: %{customdata[3]:,}<extra></extra>"
     )
 
 
-def add_dumbbells(fig, rows: pd.DataFrame, title: str, legend: bool, labels: bool, **where):
-    """Draw base -> adapter for each row of `rows` (label, base, adapter, gain, n)."""
+def add_dumbbells(
+    fig, rows: pd.DataFrame, title: str, legend: bool, labels: bool, ticks: bool = True, **where
+):
+    """Draw base -> adapter for each row of `rows` (label, base, adapter, gain, n).
+
+    With `ticks`, a vertical tick marks `question_blind` on each row: the score, on the same
+    items, of predicting the dataset's typical answer shape without reading the question.
+    """
+    if ticks:
+        fig.add_trace(
+            go.Scatter(
+                x=rows["question_blind"], y=rows["label"], name=SERIES["blind"],
+                meta="blindtick", mode="markers",
+                marker={"symbol": "line-ns", "size": 13, "color": T["blind"],
+                        "line": {"color": T["blind"], "width": 2}},
+                hovertemplate=f"<b>{title}%{{y}}</b><br>Never reads the question: "
+                "<b>%{x:.1f}</b><extra></extra>",
+                legendgroup="blind", showlegend=legend, legendrank=LEGEND_RANK["blind"],
+            ),
+            **where,
+        )  # fmt: skip
     xs, ys = [], []
     for row in rows.itertuples():
         xs += [row.base, row.adapter, None]
@@ -93,7 +119,7 @@ def add_dumbbells(fig, rows: pd.DataFrame, title: str, legend: bool, labels: boo
         ),
         **where,
     )  # fmt: skip
-    custom = rows[["base", "adapter", "gain", "n"]].to_numpy()
+    custom = rows[["base", "adapter", "gain", "n", "question_blind"]].to_numpy()
     for key in ("base", "adapter"):
         text = [f"{v:.1f}" for v in rows[key]] if labels and key == "adapter" else None
         fig.add_trace(
@@ -104,7 +130,8 @@ def add_dumbbells(fig, rows: pd.DataFrame, title: str, legend: bool, labels: boo
                 textfont={"color": T["ink"], "size": 12},
                 marker={"color": T[key], "size": 11, "line": {"color": T["surface"], "width": 2}},
                 customdata=custom, hovertemplate=_hover(title + "%{y}"),
-                legendgroup=key, showlegend=legend, cliponaxis=False,
+                legendgroup=key, showlegend=legend, legendrank=LEGEND_RANK[key],
+                cliponaxis=False,
             ),
             **where,
         )  # fmt: skip
@@ -143,34 +170,43 @@ def x_range(*values, pad: float = 8.0) -> tuple[float, float]:
     return float(flat.min() - pad), float(flat.max() + pad + 6)
 
 
-def headline_chart(overall: pd.DataFrame, condition: str, rng) -> tuple[go.Figure, pd.DataFrame]:
+def reference_trace(rows: pd.DataFrame, kind: str, symbol: str, hover: str) -> go.Scatter:
+    """Single-value rows on the headline chart: published scores and question-blind baselines."""
+    return go.Scatter(
+        x=rows["reference"], y=rows["label"], name=SERIES[kind], meta=kind,
+        mode="markers+text", text=[f"{v:.1f}" for v in rows["reference"]],
+        textposition="middle right", textfont={"color": T["ink"], "size": 12},
+        marker={"color": T[kind], "size": 10, "symbol": symbol,
+                "line": {"color": T["surface"], "width": 2}},
+        hovertemplate=f"<b>%{{y}}</b><br>{hover}: <b>%{{x:.2f}}</b><extra></extra>",
+        legendrank=LEGEND_RANK[kind], cliponaxis=False,
+    )  # fmt: skip
+
+
+def headline_chart(
+    overall: pd.DataFrame, blind: pd.DataFrame, condition: str, rng
+) -> tuple[go.Figure, pd.DataFrame]:
     ours = overall[overall["condition"] == condition].copy()
     ours["label"] = ours["model_name"] + " + SubPOP"
-    ours = ours.sort_values("adapter", ascending=False)
     table = ours[["label", "base", "adapter", "gain", "n"]].copy()
-    table["published"] = float("nan")
     fig = go.Figure()
-    order = list(ours["label"])
-    add_dumbbells(fig, ours, "", legend=True, labels=True)
+    add_dumbbells(fig, ours, "", legend=True, labels=True, ticks=False)
+    references = []
     if condition == "simbench":
-        pub = pd.DataFrame(PUBLISHED, columns=["label", "published"])
+        pub = pd.DataFrame(PUBLISHED, columns=["label", "reference"])
         pub["label"] += " · published"
-        table = pd.concat([table, pub], ignore_index=True)
-        table["rank"] = table["adapter"].fillna(table["published"])
-        table = table.sort_values("rank", ascending=False).drop(columns="rank")
-        order = list(table["label"])
-        fig.add_trace(
-            go.Scatter(
-                x=pub["published"], y=pub["label"], name=SERIES["published"], meta="published",
-                mode="markers+text", text=[f"{v:.1f}" for v in pub["published"]],
-                textposition="middle right", textfont={"color": T["ink"], "size": 12},
-                marker={"color": T["published"], "size": 10, "symbol": "diamond",
-                        "line": {"color": T["surface"], "width": 2}},
-                hovertemplate="<b>%{y}</b><br>Published score: <b>%{x:.2f}</b><extra></extra>",
-                cliponaxis=False,
-            )
-        )  # fmt: skip
-    return style(fig, len(order), rng, left=250, order=order), table.reset_index(drop=True)
+        fig.add_trace(reference_trace(pub, "published", "diamond", "Published score"))
+        references.append(pub)
+    # The baselines never see a prompt, so they are the same under either format.
+    base = blind[blind["subset"] == "all items"]
+    base = pd.DataFrame({"label": base["baseline"].map(BLIND_LABELS), "reference": base["score"]})
+    fig.add_trace(reference_trace(base, "blind", "square", "Score without reading the question"))
+    references.append(base)
+    table = pd.concat([table, *references], ignore_index=True)
+    table["rank"] = table["adapter"].fillna(table["reference"])
+    table = table.sort_values("rank", ascending=False).drop(columns="rank")
+    order = list(table["label"])
+    return style(fig, len(order), rng, left=300, order=order), table.reset_index(drop=True)
 
 
 def panel_chart(rows: pd.DataFrame, order: list[str], rng, left: int) -> go.Figure:
@@ -184,6 +220,38 @@ def panel_chart(rows: pd.DataFrame, order: list[str], rng, left: int) -> go.Figu
         sub = rows[rows["model_name"] == name].set_index("label").loc[order].reset_index()
         add_dumbbells(fig, sub, f"{name} · ", legend=col == 1, labels=False, row=1, col=col)
     return style(fig, len(order), rng, left=left, order=order)
+
+
+def recalibrated_chart(controls: pd.DataFrame, overall: pd.DataFrame, condition: str, rng):
+    """Base and adapter after the same generic correction: letter usage and one temperature."""
+    rows = controls[controls["condition"] == condition].merge(
+        overall[["model", "condition", "n", "question_blind"]], on=["model", "condition"]
+    )
+    rows = pd.DataFrame(
+        {
+            "label": rows["model_name"],
+            "raw_base": rows["base"],
+            "base": rows["base_letter_usage_matched"],
+            "raw_adapter": rows["adapter"],
+            "adapter": rows["adapter_letter_usage_matched"],
+            "gain": rows["adapter_letter_usage_matched"] - rows["base_letter_usage_matched"],
+            "n": rows["n"],
+            "question_blind": rows["question_blind"],
+        }
+    )
+    fig = go.Figure()
+    add_dumbbells(fig, rows, "", legend=True, labels=True, ticks=False)
+    reference = pd.DataFrame(
+        {"label": [BLIND_LABELS["dataset"]], "reference": [rows["question_blind"].iloc[0]]}
+    )
+    fig.add_trace(
+        reference_trace(reference, "blind", "square", "Score without reading the question")
+    )
+    table = pd.concat([rows, reference], ignore_index=True)
+    table["rank"] = table["adapter"].fillna(table["reference"])
+    table = table.sort_values("rank", ascending=False).drop(columns="rank")
+    order = list(table["label"])
+    return style(fig, len(order), rng, left=300, order=order), table.reset_index(drop=True)
 
 
 def table_html(df: pd.DataFrame, columns: dict[str, str]) -> str:
@@ -213,14 +281,17 @@ def table_html(df: pd.DataFrame, columns: dict[str, str]) -> str:
 def wide_table(rows: pd.DataFrame, order: list[str], first: str) -> str:
     """Rows down, models across, 'base → adapter' in each cell."""
     models = [name for _, name in MODEL_PAIRS.values() if name in set(rows["model_name"])]
-    head = f'<th>{html.escape(first)}</th><th class="num">Items</th>' + "".join(
-        f'<th class="num">{html.escape(m)}</th>' for m in models
+    head = (
+        f'<th>{html.escape(first)}</th><th class="num">Items</th>'
+        '<th class="num">Never reads the question</th>'
+        + "".join(f'<th class="num">{html.escape(m)}</th>' for m in models)
     )
     indexed = rows.set_index(["label", "model_name"])
     body = []
     for label in order:
         n = int(indexed.loc[(label, models[0]), "n"])
-        cells = "".join(
+        blind = indexed.loc[(label, models[0]), "question_blind"]
+        cells = f'<td class="num">{blind:.1f}</td>' + "".join(
             f'<td class="num">{indexed.loc[(label, m), "base"]:.1f} → '
             f"{indexed.loc[(label, m), 'adapter']:.1f}</td>"
             for m in models
@@ -312,6 +383,9 @@ PAGE = """<!doctype html>
 adapter, on identical prompts. Every dumbbell runs from the base model's score to the score
 with the adapter. A score of 100 matches the human answer distribution; 0 is no better than
 answering uniformly; below 0 is worse than uniform.</p>
+<p class="lede">For scale: a predictor that never reads the question, and knows only each
+dataset's typical answer shape, scores {blind_dataset}. Squares and vertical ticks mark
+that baseline.</p>
 
 <div class="filters" role="group" aria-label="Prompt format">
   <span>Prompt format</span>
@@ -320,22 +394,35 @@ answering uniformly; below 0 is worse than uniform.</p>
 
 <section>
   <h2>Overall score</h2>
-  <p class="sub">All 13,510 SimBench items. {headline_note}</p>
+  <p class="sub">All 13,510 SimBench items. Grey diamonds are scores published in the
+  SimBench paper, shown for SimBench's own prompt format only. Squares are predictors that
+  never read the question.</p>
   {headline}
+</section>
+
+<section>
+  <h2>After the same generic correction</h2>
+  <p class="sub">Base models often favour particular option letters, which costs score for
+  reasons unrelated to what they know. Here the base model and the adapter each have their
+  average letter usage shifted to the human average and one temperature applied. On this
+  footing every adapter is {recal_low} to {recal_high} points above its base model. The
+  square is the question-blind score.</p>
+  {recalibrated}
 </section>
 
 <section>
   <h2>By kind of dataset</h2>
   <p class="sub">The gain is largest on OpinionQA, the survey family SubPOP trained on, and
   holds on other surveys, on non-survey tasks, and on the 12,564 items whose question matches
-  nothing in SubPOP's training data.</p>
+  nothing in SubPOP's training data. The tick is the question-blind score on the same items:
+  on OpinionQA it is already high, and on non-survey tasks only the 70B adapter passes it.</p>
   {subsets}
 </section>
 
 <section>
   <h2>By dataset</h2>
   <p class="sub">All 25 dataset and split combinations, ordered by average gain within each
-  split. Some datasets are small: the table gives item counts.</p>
+  split. Some datasets are small: the table gives item counts. Ticks as above.</p>
   {datasets}
 </section>
 
@@ -346,6 +433,10 @@ answering uniformly; below 0 is worse than uniform.</p>
   the dataset's mean TVD between humans and uniform.</li>
   <li>Model answers are read from next-token probabilities over the option letters, in
   bfloat16, one forward pass per prompt.</li>
+  <li>The question-blind predictors use human answers to other questions: the average
+  answer shape of every other question with the same number of options, either in the
+  item's own dataset ({blind_dataset}) or across the whole benchmark ({blind_benchmark}). No
+  model gets these for free; they show how much score answer shape alone is worth.</li>
   <li>Published scores are from the SimBench paper
   (<a href="https://arxiv.org/abs/2510.17516">arXiv:2510.17516</a>) and apply to SimBench's
   own prompt format only. Its instruction-tuned models were asked to state a distribution
@@ -382,9 +473,12 @@ function applyTheme() {{
     const byKind = {{}};
     gd.data.forEach((trace, i) => (byKind[trace.meta] = byKind[trace.meta] || []).push(i));
     Object.entries(byKind).forEach(([kind, indices]) => {{
-      const update = kind === "connector"
-        ? {{"line.color": t.axis}}
-        : {{"marker.color": t[kind], "marker.line.color": t.surface, "textfont.color": t.ink}};
+      let update = {{
+        "marker.color": t[kind], "marker.line.color": t.surface, "textfont.color": t.ink,
+      }};
+      if (kind === "connector") update = {{"line.color": t.axis}};
+      // A tick is drawn with the marker's outline, so the outline carries its colour.
+      if (kind === "blindtick") update = {{"marker.color": t.blind, "marker.line.color": t.blind}};
       Plotly.restyle(gd, update, indices);
     }});
     Plotly.relayout(gd, layout);
@@ -418,14 +512,23 @@ def main() -> None:
     overall = pd.read_csv(TABLES_DIR / "overall.csv")
     subsets = pd.read_csv(TABLES_DIR / "by_subset.csv")
     datasets = pd.read_csv(TABLES_DIR / "by_dataset.csv")
+    blind = pd.read_csv(TABLES_DIR / "question_blind.csv")
+    controls = pd.read_csv(TABLES_DIR / "calibration_controls.csv")
+    blind_all = blind[blind["subset"] == "all items"].set_index("baseline")["score"]
 
     both = overall[overall["condition"].isin(FORMATS)]
     head_range = x_range(both["base"], both["adapter"], [p[1] for p in PUBLISHED])
+    corrected_gain = (
+        controls["adapter_letter_usage_matched"] - controls["base_letter_usage_matched"]
+    )
+    recal_range = x_range(
+        controls["base_letter_usage_matched"], controls["adapter_letter_usage_matched"], [0.0]
+    )
 
     subsets = subsets[subsets["subset"].isin(SUBSET_LABELS) & subsets["condition"].isin(FORMATS)]
     subsets = subsets.assign(label=subsets["subset"].map(SUBSET_LABELS))
     subset_order = [v for k, v in SUBSET_LABELS.items() if k in set(subsets["subset"])]
-    subset_range = x_range(subsets["base"], subsets["adapter"])
+    subset_range = x_range(subsets["base"], subsets["adapter"], subsets["question_blind"])
 
     datasets = datasets[datasets["condition"].isin(FORMATS)].copy()
     split_names = {"pop": "Pop", "grouped": "Grouped"}
@@ -436,16 +539,35 @@ def main() -> None:
     dataset_order = list(
         mean_gain.sort_values(["split_rank", "gain"], ascending=[True, False])["label"]
     )
-    dataset_range = x_range(datasets["base"], datasets["adapter"])
+    dataset_range = x_range(datasets["base"], datasets["adapter"], datasets["question_blind"])
 
-    blocks = {"headline": [], "subsets": [], "datasets": []}
+    blocks = {"headline": [], "recalibrated": [], "subsets": [], "datasets": []}
     for condition in FORMATS:
-        fig, table = headline_chart(overall, condition, head_range)
-        columns = {"label": "Model", "base": "Base", "adapter": "With adapter", "gain": "Gain"}
-        if condition == "simbench":
-            columns["published"] = "Published"
+        fig, table = headline_chart(overall, blind, condition, head_range)
+        columns = {
+            "label": "Model or reference",
+            "base": "Base",
+            "adapter": "With adapter",
+            "gain": "Gain",
+            "reference": "Reference score",
+        }
         blocks["headline"].append(
             chart_block(fig, f"headline-{condition}", table_html(table, columns), condition, False)
+        )
+        fig, table = recalibrated_chart(controls, overall, condition, recal_range)
+        columns = {
+            "label": "Model",
+            "raw_base": "Base, as run",
+            "base": "Base, corrected",
+            "raw_adapter": "Adapter, as run",
+            "adapter": "Adapter, corrected",
+            "gain": "Difference after correction",
+            "reference": "Reference score",
+        }
+        blocks["recalibrated"].append(
+            chart_block(
+                fig, f"recalibrated-{condition}", table_html(table, columns), condition, False
+            )
         )
         sub = subsets[subsets["condition"] == condition]
         blocks["subsets"].append(
@@ -483,11 +605,12 @@ def main() -> None:
         font=FONT,
         plotlyjs=get_plotlyjs_version(),
         buttons=buttons,
-        headline_note=(
-            "Grey diamonds are scores published in the SimBench paper, shown for SimBench's "
-            "own prompt format only."
-        ),
+        blind_dataset=f"{blind_all['dataset']:.1f}",
+        blind_benchmark=f"{blind_all['benchmark']:.1f}",
+        recal_low=f"{corrected_gain.min():.0f}",
+        recal_high=f"{corrected_gain.max():.0f}",
         headline="\n".join(blocks["headline"]),
+        recalibrated="\n".join(blocks["recalibrated"]),
         subsets="\n".join(blocks["subsets"]),
         datasets="\n".join(blocks["datasets"]),
         exact=html.escape(exact_text),

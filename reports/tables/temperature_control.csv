@@ -1,9 +1,0 @@
-model,model_name,condition,base,adapter,base_at_best_temperature,base_best_temperature,adapter_at_best_temperature,adapter_best_temperature,base_temperature_per_dataset,adapter_temperature_per_dataset
-mistral-7b,Mistral-7B,simbench,7.5235,22.9479,7.5235,1.0,23.0726,1.0905,11.5731,24.6176
-mistral-7b,Mistral-7B,subpop_skeleton,9.3964,22.7799,9.4951,0.917,22.937,1.0905,13.6122,24.8989
-llama-2-7b,Llama-2-7B,simbench,-9.5024,3.1916,-0.0061,64.0,6.1413,1.6818,3.525,8.9733
-llama-2-7b,Llama-2-7B,subpop_skeleton,-9.9609,11.4424,-0.0081,64.0,13.8567,1.6818,3.2074,17.8709
-llama-2-13b,Llama-2-13B,simbench,-42.3633,20.5666,-0.0867,64.0,20.6498,0.917,1.9374,22.8996
-llama-2-13b,Llama-2-13B,subpop_skeleton,-9.1905,23.3344,0.414,5.6569,23.4387,1.0905,4.0543,25.833
-llama-3-70b,Llama-3-70B,simbench,4.011,34.5696,7.6123,1.6818,34.5696,1.0,12.385,36.9909
-llama-3-70b,Llama-3-70B,subpop_skeleton,4.5185,30.7101,8.1239,1.6818,31.1898,1.1892,11.4577,33.1428

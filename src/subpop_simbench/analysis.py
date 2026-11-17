@@ -101,6 +101,71 @@ def best_temperature_per_group(
     return out
 
 
+def shapes_from_other_questions(items: pd.DataFrame, by: tuple[str, ...] = ()) -> np.ndarray:
+    """The average human answer distribution of *other* questions, per item.
+
+    Averages `human_dist` over items with the same number of options (and the same values of
+    `by`, e.g. the dataset), leaving out every row of the item's own question. Nothing about
+    the item being predicted is used, including in the Grouped split, where one question
+    appears once per subgroup. Rows are NaN where there is no other question to average.
+    """
+    width = int(items["n_options"].max())
+    human = pad(items["human_dist"], width)
+    out = np.full_like(human, np.nan)
+    question = (items["dataset_name"] + "\x1f" + items["question"]).to_numpy()
+    for idx in items.groupby([*by, "n_options"]).indices.values():
+        idx = np.asarray(idx)
+        codes, _ = pd.factorize(question[idx])
+        per_question = np.zeros((codes.max() + 1, width))
+        np.add.at(per_question, codes, human[idx])
+        others = len(idx) - np.bincount(codes)[codes]
+        ok = others > 0
+        out[idx[ok]] = (human[idx].sum(axis=0) - per_question[codes[ok]]) / others[ok, None]
+    return out
+
+
+# Predictors that never read the question. They use human answers to other questions, so no
+# model gets them for free; they show how much score answer shape alone is worth.
+QUESTION_BLIND = {
+    "benchmark": "one answer shape per option count",
+    "dataset": "each dataset's typical answer shape",
+}
+
+
+def question_blind_predictions(items: pd.DataFrame) -> dict[str, np.ndarray]:
+    """Per-item predictions of the two question-blind baselines, in the row order of `items`.
+
+    benchmark  the average answer shape of all other questions with that many options
+    dataset    the same, restricted to other questions of the item's own dataset; falls back
+               to `benchmark` where the dataset has no other question with that option count
+    """
+    n = items["n_options"].to_numpy()
+    width = int(n.max())
+    uniform = (np.arange(width) < n[:, None]) / n[:, None]
+    benchmark = shapes_from_other_questions(items)
+    benchmark = np.where(np.isnan(benchmark), uniform, benchmark)
+    dataset = shapes_from_other_questions(items, by=("dataset_name",))
+    dataset = np.where(np.isnan(dataset), benchmark, dataset)
+    return {"benchmark": benchmark, "dataset": dataset}
+
+
+def match_letter_usage(pred: np.ndarray, target: np.ndarray, n_options: np.ndarray) -> np.ndarray:
+    """Shift a model's average use of each option letter to `target`.
+
+    Within each option count, predictions are divided by the model's own average probability
+    for each letter and multiplied by the target share for that letter, then renormalised.
+    This changes which letters the model favours on average. It uses nothing about the
+    question, so it cannot add knowledge of how people answer a particular item.
+    """
+    out = np.zeros_like(pred)
+    for k in np.unique(n_options):
+        rows = n_options == k
+        own = pred[rows].mean(axis=0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            out[rows] = np.where(own > 0, pred[rows] / own, 0.0) * target[rows]
+    return out / out.sum(axis=1, keepdims=True)
+
+
 @dataclass
 class Pair:
     """One model's base and adapter runs under one condition, aligned row for row."""

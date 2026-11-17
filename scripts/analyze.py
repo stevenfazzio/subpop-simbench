@@ -10,22 +10,33 @@ Writes CSVs to reports/tables/:
                                  scripts/overlap.py has run) items with no matching
                                  training question
     by_dataset.csv               per SimBench dataset and split
-    temperature_control.csv      how much of the gain a temperature on the base model's
-                                 answers reproduces
+    question_blind.csv           what predictors that never read the question score
+    calibration_controls.csv     how much of the gain generic recalibration of the base
+                                 model reproduces: a temperature, and its letter usage
+                                 shifted to the human average
     condition_c_by_subgroup.csv  SubPOP's own format: subgroups it trained on vs unseen
     overlap_opinionqa.csv        OpinionQA scores by training-question match status
+
+Every per-model table also carries `question_blind`: the score, on the same items, of
+predicting each dataset's typical answer shape without reading the question.
 """
 
+import numpy as np
 import pandas as pd
 
 from subpop_simbench.analysis import (
     MODEL_PAIRS,
+    QUESTION_BLIND,
     TIERS,
     best_temperature,
     best_temperature_per_group,
     bootstrap_ci,
     load_pairs,
+    match_letter_usage,
+    pad,
     prepare_items,
+    question_blind_predictions,
+    scores_at,
 )
 from subpop_simbench.io import ITEMS_PATH, OVERLAP_PATH, RESULTS_DIR, TABLES_DIR
 from subpop_simbench.overlap import STATUSES
@@ -41,7 +52,20 @@ def _row(pair, mask, **keys) -> dict:
         "base": base.mean(),
         "adapter": adapter.mean(),
         "gain": (adapter - base).mean(),
+        "question_blind": pair.frame["blind_dataset"].to_numpy()[mask].mean(),
     }
+
+
+def _subset_masks(frame: pd.DataFrame, have_overlap: bool) -> dict[str, np.ndarray]:
+    masks = {"all items": np.ones(len(frame), dtype=bool)}
+    for split in ("pop", "grouped"):
+        masks[f"{split} split"] = (frame["split"] == split).to_numpy()
+    for tier in TIERS:
+        masks[tier] = (frame["tier"] == tier).to_numpy()
+    masks["all but OpinionQA"] = (frame["dataset_name"] != "OpinionQA").to_numpy()
+    if have_overlap:
+        masks[NO_MATCH] = (frame["status"] == STATUSES[3]).to_numpy()
+    return {name: mask for name, mask in masks.items() if mask.any()}
 
 
 def main() -> None:
@@ -55,7 +79,21 @@ def main() -> None:
     else:
         print(f"[{OVERLAP_PATH.name} not found: skipping the overlap tables]")
 
-    overall, subsets, datasets, temperatures, subgroups, overlap = [], [], [], [], [], []
+    # Question-blind baselines: one score per item, the same for every model.
+    width = int(items["n_options"].max())
+    human, norm = pad(items["human_dist"], width), items["norm"].to_numpy()
+    blind = question_blind_predictions(items)
+    for key, pred in blind.items():
+        items[f"blind_{key}"] = scores_at(pred, human, norm)
+    position = pd.Series(np.arange(len(items)), index=items["item_id"])
+    blind_rows = [
+        {"baseline": key, "description": QUESTION_BLIND[key], "subset": subset,
+         "n": int(mask.sum()), "score": items[f"blind_{key}"].to_numpy()[mask].mean()}
+        for key in blind
+        for subset, mask in _subset_masks(items, have_overlap).items()
+    ]  # fmt: skip
+
+    overall, subsets, datasets, controls, subgroups, overlap = [], [], [], [], [], []
     for model, (stem, name) in MODEL_PAIRS.items():
         pairs = load_pairs(items, RESULTS_DIR, stem)
         if pairs is None:
@@ -64,7 +102,7 @@ def main() -> None:
         for condition, pair in pairs.items():
             keys = {"model": model, "model_name": name, "condition": condition}
             frame = pair.frame
-            everything = frame["item_id"].notna().to_numpy()
+            everything = np.ones(len(frame), dtype=bool)
             gain = pair.score_adapter - pair.score_base
             low, high = bootstrap_ci(gain)
             overall.append(
@@ -78,15 +116,8 @@ def main() -> None:
                 }
             )
 
-            masks = {"all items": everything}
-            for split in ("pop", "grouped"):
-                masks[f"{split} split"] = (frame["split"] == split).to_numpy()
-            for tier in TIERS:
-                masks[tier] = (frame["tier"] == tier).to_numpy()
-            masks["all but OpinionQA"] = (frame["dataset_name"] != "OpinionQA").to_numpy()
-            if have_overlap:
-                masks[NO_MATCH] = (frame["status"] == STATUSES[3]).to_numpy()
-            subsets += [_row(pair, m, **keys, subset=s) for s, m in masks.items() if m.any()]
+            masks = _subset_masks(frame, have_overlap)
+            subsets += [_row(pair, m, **keys, subset=s) for s, m in masks.items()]
 
             for (split, dataset), idx in frame.groupby(["split", "dataset_name"]).indices.items():
                 mask = frame.index.isin(idx)
@@ -112,7 +143,16 @@ def main() -> None:
             base_best, base_t = best_temperature(pair.pred_base, *args)
             adapter_best, adapter_t = best_temperature(pair.pred_adapter, *args)
             groups = frame["dataset_name"]
-            temperatures.append(
+            # The human average share of each letter, from other questions only.
+            shape = blind["benchmark"][position.loc[frame["item_id"]].to_numpy()]
+            n_options = frame["n_options"].to_numpy()
+            base_matched, _ = best_temperature(
+                match_letter_usage(pair.pred_base, shape, n_options), *args
+            )
+            adapter_matched, _ = best_temperature(
+                match_letter_usage(pair.pred_adapter, shape, n_options), *args
+            )
+            controls.append(
                 {
                     **keys,
                     "base": pair.score_base.mean(),
@@ -127,6 +167,11 @@ def main() -> None:
                     "adapter_temperature_per_dataset": best_temperature_per_group(
                         pair.pred_adapter, *args, groups
                     ).mean(),
+                    "base_letter_usage_matched": base_matched,
+                    "adapter_letter_usage_matched": adapter_matched,
+                    "base_share_on_first_option": pair.pred_base[:, 0].mean(),
+                    "adapter_share_on_first_option": pair.pred_adapter[:, 0].mean(),
+                    "human_share_on_first_option": pair.human[:, 0].mean(),
                 }
             )
 
@@ -138,7 +183,8 @@ def main() -> None:
         "overall": overall,
         "by_subset": subsets,
         "by_dataset": datasets,
-        "temperature_control": temperatures,
+        "question_blind": blind_rows,
+        "calibration_controls": controls,
         "condition_c_by_subgroup": subgroups,
         "overlap_opinionqa": overlap,
     }
@@ -155,8 +201,15 @@ def main() -> None:
     )
     print("\nAdapter score by subset")
     print(wide.round(1).to_string())
-    print("\nTemperature control")
-    print(frames["temperature_control"].drop(columns="model").round(2).to_string(index=False))
+    print("\nQuestion-blind baselines")
+    print(
+        frames["question_blind"]
+        .pivot_table(index="subset", columns="description", values="score", sort=False)
+        .round(1)
+        .to_string()
+    )
+    print("\nCalibration controls")
+    print(frames["calibration_controls"].drop(columns="model").round(2).to_string(index=False))
     print(f"\nwrote {len(frames)} tables to {TABLES_DIR}")
 
 

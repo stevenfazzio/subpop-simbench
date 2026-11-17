@@ -7,9 +7,12 @@ from subpop_simbench.analysis import (
     best_temperature,
     best_temperature_per_group,
     bootstrap_ci,
+    match_letter_usage,
     pad,
     prepare_items,
+    question_blind_predictions,
     scores_at,
+    shapes_from_other_questions,
     tier_of,
 )
 from subpop_simbench.scoring import score_predictions
@@ -77,3 +80,51 @@ def test_bootstrap_interval_brackets_the_mean():
     low, high = bootstrap_ci(x)
     assert low < x.mean() < high
     assert bootstrap_ci(x) == (low, high)  # seeded, so repeatable
+
+
+@pytest.fixture
+def shape_items():
+    # Dataset X: question q1 asked of two subgroups, plus q2 and q3. Dataset Y: one question.
+    return pd.DataFrame(
+        {
+            "item_id": ["x1a", "x1b", "x2", "x3", "y1"],
+            "dataset_name": ["X", "X", "X", "X", "Y"],
+            "question": ["q1", "q1", "q2", "q3", "q1"],
+            "human_dist": [[1.0, 0.0], [0.8, 0.2], [0.4, 0.6], [0.2, 0.8], [0.5, 0.5]],
+            "n_options": [2, 2, 2, 2, 2],
+        }
+    )
+
+
+def test_shapes_never_use_the_items_own_question(shape_items):
+    shapes = shapes_from_other_questions(shape_items, by=("dataset_name",))
+    # q1's two rows see only q2 and q3; the other subgroup's answer to q1 is left out.
+    assert shapes[0].tolist() == pytest.approx([0.3, 0.7])
+    assert shapes[1].tolist() == pytest.approx([0.3, 0.7])
+    # q2 sees both q1 rows and q3.
+    assert shapes[2].tolist() == pytest.approx([(1.0 + 0.8 + 0.2) / 3, (0.0 + 0.2 + 0.8) / 3])
+    # Dataset Y has no other question.
+    assert np.isnan(shapes[4]).all()
+
+
+def test_question_blind_falls_back_to_the_benchmark_shape(shape_items):
+    blind = question_blind_predictions(shape_items)
+    # Y's only question shares its text with X's q1 but is a different dataset's question,
+    # so the benchmark-wide shape for it averages all four X rows.
+    expected = [(1.0 + 0.8 + 0.4 + 0.2) / 4, (0.0 + 0.2 + 0.6 + 0.8) / 4]
+    assert blind["benchmark"][4].tolist() == pytest.approx(expected)
+    assert blind["dataset"][4].tolist() == pytest.approx(expected)
+    assert blind["dataset"][0].tolist() == pytest.approx([0.3, 0.7])
+    for pred in blind.values():
+        assert pred.sum(axis=1).tolist() == pytest.approx([1.0] * 5)
+
+
+def test_match_letter_usage_moves_the_average_not_the_ranking():
+    pred = np.array([[0.9, 0.1], [0.7, 0.3], [0.8, 0.2]])
+    target = np.tile([0.5, 0.5], (3, 1))
+    out = match_letter_usage(pred, target, np.array([2, 2, 2]))
+    assert out.sum(axis=1).tolist() == pytest.approx([1.0] * 3)
+    # The model favoured the first letter; afterwards its average use is close to even.
+    assert abs(out[:, 0].mean() - 0.5) < abs(pred[:, 0].mean() - 0.5)
+    # Items keep their order: the one most confident in option A is still the most confident.
+    assert out[:, 0].argsort().tolist() == pred[:, 0].argsort().tolist()

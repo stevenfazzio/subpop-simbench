@@ -30,6 +30,15 @@ The three columns are the prompt conditions described [below](#prompt-conditions
 first two cover all 13,510 SimBench items. Paired-bootstrap 95% intervals on the gains are
 about ±1 point for the first two columns and ±2 for the third.
 
+Two things put these numbers in proportion, both detailed
+[below](#how-much-is-answer-shape-and-calibration):
+
+- A predictor that never reads the question, and knows only each dataset's typical answer
+  shape, scores 19.4. That is level with two of the four adapters.
+- Much of the raw gain comes from fixing the base models' habit of favouring particular
+  option letters. With that corrected on both sides, every adapter is 10 to 16 points above
+  its base model.
+
 An interactive version of every table in this section, with all 25 datasets, is in
 [`reports/figures/subpop_on_simbench.html`](reports/figures/subpop_on_simbench.html)
 (download and open it; it loads plotly from a CDN). The numbers behind it are in
@@ -55,34 +64,72 @@ SimBench's own format, base → with adapter:
   other 13 datasets: psychometric scales, moral dilemmas, risky choices, annotation and
   judgement tasks.
 - **Llama-2-7B is the exception.** Its adapter reaches the uniform baseline but barely
-  passes it in SimBench's format, and does nothing for non-survey tasks.
+  passes it in SimBench's format, and does nothing for non-survey tasks. Most of that is
+  letter usage, [as shown below](#how-much-is-answer-shape-and-calibration).
 - **One dataset gets worse.** OSPsychMACH falls in 7 of its 8 model and format
   combinations. Choices13k and OSPsychRWAS fall in 4 of 8.
 
-### Is it just calibration?
+### How much is answer shape and calibration?
 
-A base model that is over-confident, or always picks "A", scores below zero. An adapter
-could then "gain" by flattening the answers and nothing else. To check, the base model's
-answers are rescaled with the single temperature that maximises its own score, fitted on
-the test items themselves, and again with a separate temperature per dataset.
+**A predictor that never reads the question.** It predicts the average human answer
+distribution of *other* questions with the same number of options, either across the whole
+benchmark or within the item's own dataset. It uses human answers, so no model gets it for
+free. It shows how much score answer shape alone is worth. Adapter scores are for
+SimBench's format.
 
-| Model | Format | Base | Base, best temperature | Base, best temperature per dataset | With adapter |
-|---|---|---|---|---|---|
-| Mistral-7B | SimBench | 7.5 | 7.5 | 11.6 | 22.9 |
-| Mistral-7B | SubPOP layout | 9.4 | 9.5 | 13.6 | 22.8 |
-| Llama-2-7B | SimBench | −9.5 | 0.0 | 3.5 | 3.2 |
-| Llama-2-7B | SubPOP layout | −10.0 | 0.0 | 3.2 | 11.4 |
-| Llama-2-13B | SimBench | −42.4 | −0.1 | 1.9 | 20.6 |
-| Llama-2-13B | SubPOP layout | −9.2 | 0.4 | 4.1 | 23.3 |
-| Llama-3-70B | SimBench | 4.0 | 7.6 | 12.4 | 34.6 |
-| Llama-3-70B | SubPOP layout | 4.5 | 8.1 | 11.5 | 30.7 |
+| Items | n | One shape per option count | Each dataset's typical shape | Mistral-7B + SubPOP | Llama-2-7B + SubPOP | Llama-2-13B + SubPOP | Llama-3-70B + SubPOP |
+|---|---|---|---|---|---|---|---|
+| All items | 13,510 | 8.4 | 19.4 | 22.9 | 3.2 | 20.6 | 34.6 |
+| OpinionQA | 1,484 | 30.3 | 56.6 | 64.7 | 39.2 | 61.4 | 68.2 |
+| Other opinion surveys | 8,344 | 6.0 | 12.8 | 20.5 | 2.7 | 19.6 | 32.0 |
+| Non-survey tasks | 3,682 | 5.0 | 19.4 | 11.7 | −10.2 | 6.4 | 26.9 |
+| All but OpinionQA | 12,026 | 5.7 | 14.8 | 17.8 | −1.2 | 15.5 | 30.4 |
+| No matching training question | 12,564 | 6.6 | 16.7 | 20.6 | 0.9 | 17.9 | 32.4 |
 
-For both Llama-2 bases the best single temperature is so flat that it amounts to answering
-uniformly. Llama-2-13B's −42.4 comes from choosing "A" on 92% of items, more confidently
-than the other base models, so its raw gain of 63 points overstates the adapter; 20.6
-against a uniform-answering baseline of 0 is the fairer reading. For Llama-2-7B in SimBench's format,
-the adapter does no better than a base model given its best temperature per dataset. For
-the other three models the adapter is 9 to 22 points above even that generous control.
+- **A score near 20 needs no reading.** Each dataset's typical answer shape scores 19.4,
+  above the best published base model (15.90) and level with the Mistral-7B and Llama-2-13B
+  adapters.
+- **OpinionQA is mostly answer shape.** The question-blind score there is 56.6; three of
+  the adapters add 5 to 12 points.
+- **On non-survey tasks only the Llama-3-70B adapter passes it.** Two datasets weigh
+  heavily: in DICES and Jester the answer shape barely varies between items (question-blind
+  86 and 63), and every adapter is far below.
+- **Per dataset,** the Llama-3-70B adapter beats the question-blind score on 19 of the 25
+  dataset and split combinations, Mistral-7B on 16, Llama-2-13B on 13 and Llama-2-7B on 7.
+
+**Generic recalibration.** A base model that favours "A" or is over-confident scores badly
+for reasons unrelated to what it knows about people, and an adapter could gain by fixing
+only that. Two corrections that use nothing about the question are applied here: the best
+single temperature, and letter usage, where the model's average probability for each
+option letter is shifted to the human average for that letter and the best temperature is
+then applied.
+
+| Model | Format | Base | Base, best temperature | Base, letter usage corrected | Adapter | Adapter, letter usage corrected | Difference after correction |
+|---|---|---|---|---|---|---|---|
+| Mistral-7B | SimBench | 7.5 | 7.5 | 13.7 | 22.9 | 25.6 | +11.8 |
+| Mistral-7B | SubPOP layout | 9.4 | 9.5 | 13.7 | 22.8 | 25.5 | +11.9 |
+| Llama-2-7B | SimBench | −9.5 | 0.0 | 8.3 | 3.2 | 18.0 | +9.7 |
+| Llama-2-7B | SubPOP layout | −10.0 | 0.0 | 8.1 | 11.4 | 20.1 | +12.1 |
+| Llama-2-13B | SimBench | −42.4 | −0.1 | 8.6 | 20.6 | 23.5 | +14.9 |
+| Llama-2-13B | SubPOP layout | −9.2 | 0.4 | 11.6 | 23.3 | 25.6 | +14.0 |
+| Llama-3-70B | SimBench | 4.0 | 7.6 | 20.2 | 34.6 | 35.6 | +15.4 |
+| Llama-3-70B | SubPOP layout | 4.5 | 8.1 | 17.9 | 30.7 | 33.6 | +15.7 |
+
+- **A temperature alone does little.** For both Llama-2 bases the best temperature is so
+  flat that it amounts to answering uniformly.
+- **Correcting letter usage does a lot.** Applied to the base model alone, it reproduces a
+  third to a half of the raw gain for Mistral-7B and Llama-3-70B and most of it for the two
+  Llama-2 models. Llama-2-13B's −42.4 comes from choosing "A" on 92% of items.
+- **Like for like, every adapter adds 10 to 16 points.** With the same correction applied
+  to the adapter as well, the difference is similar across all four models and both
+  formats. That is what the adapter adds beyond generic recalibration.
+- **It accounts for Llama-2-7B.** In SimBench's format its adapter puts 41% of its
+  probability on the first option against the humans' 29%. Corrected, it scores 18.0, in
+  line with the others.
+
+Both corrections are fitted with knowledge of the test set (the temperature on the items
+it is scored on, the letter shares from human answers to other questions), which flatters
+whichever model they are applied to.
 
 ### Next to published SimBench scores
 
@@ -98,9 +145,11 @@ From the SimBench paper's leaderboard, all in SimBench's own format:
 | Qwen2.5-32B-Instruct | 23.76 |
 | **Mistral-7B + SubPOP** | **22.9** |
 | **Llama-2-13B + SubPOP** | **20.6** |
+| *Never reads the question: each dataset's typical answer shape* | *19.4* |
 | Llama-3.1-70B-Instruct | 16.56 |
 | OLMo-2-0325-32B (best published base model) | 15.90 |
 | Llama-3.1-Centaur-70B | 8.54 |
+| *Never reads the question: one answer shape per option count* | *8.4* |
 | **Llama-2-7B + SubPOP** | **3.2** |
 | Llama-3.1-70B (base) | 1.21 |
 
@@ -119,7 +168,7 @@ This comparison is indicative, not like for like:
 
 `subpop_exact` reproduces SubPOP's prompt, which exists for 964 Grouped OpinionQA items.
 Every adapter lands between 76 and 79 whatever the base model's size, and subgroups the
-adapters never trained on gain almost as much as the 22 they did.
+adapters never trained on gain almost as much over the base model as the 22 they did.
 
 | Model | Trained subgroups (349 items) | Unseen subgroups (615 items) |
 |---|---|---|
@@ -127,6 +176,10 @@ adapters never trained on gain almost as much as the 22 they did.
 | Llama-2-7B | 26.2 → 78.8 | 27.6 → 74.2 |
 | Llama-2-13B | 25.7 → 78.8 | 25.0 → 74.4 |
 | Llama-3-70B | 52.5 → 80.5 | 54.1 → 78.7 |
+
+Against the question-blind score the picture is less even. Predicting OpinionQA's typical
+answer shape scores 60.1 on the trained-subgroup items and 67.4 on the unseen ones, so the
+adapters add 19 to 20 points for trained subgroups and 7 to 11 for unseen ones.
 
 ### Training-question overlap
 

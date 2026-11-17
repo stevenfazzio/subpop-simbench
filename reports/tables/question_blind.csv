@@ -1,0 +1,17 @@
+baseline,description,subset,n,score
+benchmark,one answer shape per option count,all items,13510,8.4291
+benchmark,one answer shape per option count,pop split,7167,6.667
+benchmark,one answer shape per option count,grouped split,6343,10.4201
+benchmark,one answer shape per option count,OpinionQA,1484,30.2646
+benchmark,one answer shape per option count,other opinion surveys,8344,6.0408
+benchmark,one answer shape per option count,non-survey tasks,3682,5.0406
+benchmark,one answer shape per option count,all but OpinionQA,12026,5.7346
+benchmark,one answer shape per option count,no matching training question,12564,6.6238
+dataset,each dataset's typical answer shape,all items,13510,19.4041
+dataset,each dataset's typical answer shape,pop split,7167,19.9165
+dataset,each dataset's typical answer shape,grouped split,6343,18.8251
+dataset,each dataset's typical answer shape,OpinionQA,1484,56.6276
+dataset,each dataset's typical answer shape,other opinion surveys,8344,12.7973
+dataset,each dataset's typical answer shape,non-survey tasks,3682,19.3735
+dataset,each dataset's typical answer shape,all but OpinionQA,12026,14.8107
+dataset,each dataset's typical answer shape,no matching training question,12564,16.7396
