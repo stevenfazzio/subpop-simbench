@@ -10,6 +10,7 @@ top switches all four between the two prompt formats that cover the whole benchm
 
 import html
 import json
+import math
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -422,7 +423,9 @@ that baseline.</p>
 <section>
   <h2>By dataset</h2>
   <p class="sub">All 25 dataset and split combinations, ordered by average gain within each
-  split. Some datasets are small: the table gives item counts. Ticks as above.</p>
+  split. Some datasets are small: the table gives item counts. Ticks as above. The
+  MoralMachine row should not be read as a result: its human answers look reversed in
+  SimBench's data (see the notes at the foot of the page).</p>
   {datasets}
 </section>
 
@@ -442,6 +445,13 @@ that baseline.</p>
   own prompt format only. Its instruction-tuned models were asked to state a distribution
   in words, and its open-weight base models were run 8-bit or 4-bit quantised, so the
   comparison is indicative.</li>
+  <li>SimBench's human answers for its 500 MoralMachine items look reversed
+  (<a href="https://github.com/pitehu/SimBench_release/issues/2">open issue on SimBench's
+  repository</a>). In the {mm_animals} items that pit only animals against only people, the
+  majority is recorded as choosing to kill the people in {mm_killed}. This page scores the
+  data as published. With those answers reversed, no overall score here moves by more than
+  {mm_shift} points and no adapter scores above {mm_best} on MoralMachine. If the published
+  scores were computed on the same data, they may move by more.</li>
   <li>On SubPOP's own prompt format, which exists for 964 OpinionQA items, the adapters
   score {exact}.</li>
 </ul>
@@ -590,6 +600,17 @@ def main() -> None:
             )
         )
 
+    # MoralMachine's human answers look reversed in SimBench's data: what reversing them does.
+    flipped = pd.read_csv(TABLES_DIR / "moralmachine_reversed.csv")
+    flipped = flipped[flipped["condition"].isin(FORMATS)]
+    everything = flipped[flipped["subset"] == "all items"]
+    mm_shift = max(
+        (everything[f"{side}_reversed"] - everything[side]).abs().max()
+        for side in ("base", "adapter")
+    )
+    mm_best = flipped.loc[flipped["subset"] == "MoralMachine", "adapter_reversed"].max()
+    animals = pd.read_csv(TABLES_DIR / "moralmachine_animals_vs_people.csv")
+
     exact = overall[overall["condition"] == "subpop_exact"]
     exact_text = "; ".join(
         f"{row.model_name} {row.adapter:.1f} (base {row.base:.1f})" for row in exact.itertuples()
@@ -614,6 +635,10 @@ def main() -> None:
         subsets="\n".join(blocks["subsets"]),
         datasets="\n".join(blocks["datasets"]),
         exact=html.escape(exact_text),
+        mm_animals=len(animals),
+        mm_killed=int((animals["share_killing_people"] > 0.5).sum()),
+        mm_shift=f"{mm_shift:.1f}",
+        mm_best=math.ceil(mm_best),
         themes=json.dumps(THEMES),
     )
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)

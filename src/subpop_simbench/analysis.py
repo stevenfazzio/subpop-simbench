@@ -4,6 +4,7 @@ Every comparison is paired: the same items under the same prompt condition, one 
 and without its SubPOP adapter.
 """
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -164,6 +165,52 @@ def match_letter_usage(pred: np.ndarray, target: np.ndarray, n_options: np.ndarr
         with np.errstate(divide="ignore", invalid="ignore"):
             out[rows] = np.where(own > 0, pred[rows] / own, 0.0) * target[rows]
     return out / out.sum(axis=1, keepdims=True)
+
+
+# SimBench's human answers for MoralMachine look reversed (see the README). The helpers below
+# check the published answers against common sense and measure what reversing them does.
+MORAL_MACHINE = "MoralMachine"
+_ANIMALS = frozenset({"cat", "cats", "dog", "dogs"})
+
+
+def swap_first_two_options(human: np.ndarray, rows: np.ndarray) -> np.ndarray:
+    """A copy of `human` with the shares of options A and B exchanged on `rows`."""
+    out = human.copy()
+    out[rows, :2] = human[rows, 1::-1]
+    return out
+
+
+def casualties(option_text: str) -> list[str]:
+    """Who dies under one MoralMachine option, e.g. ["elderly man", "cat"]."""
+    names = re.findall(r"^\s*\*\s*\d+\s+(.+)$", option_text, flags=re.MULTILINE)
+    return [name.strip().lower() for name in names]
+
+
+def animals_versus_people(items: pd.DataFrame) -> pd.DataFrame:
+    """MoralMachine items where one outcome kills only animals and the other only people.
+
+    `share_killing_people` is the published share of respondents choosing the outcome in
+    which the people die. Moral Machine respondents strongly prefer sparing people over pets
+    (Awad et al., 2018), so values near 1 mean the published answers are the wrong way round.
+    """
+    rows = []
+    for item in items[items["dataset_name"] == MORAL_MACHINE].itertuples():
+        dead = [casualties(text) for text in item.option_texts]
+        if len(dead) != 2 or not all(dead):
+            continue
+        only_animals = [all(name in _ANIMALS for name in d) for d in dead]
+        no_animals = [not any(name in _ANIMALS for name in d) for d in dead]
+        for people, animals in ((0, 1), (1, 0)):
+            if no_animals[people] and only_animals[animals]:
+                rows.append(
+                    {
+                        "item_id": item.item_id,
+                        "people_die_under_option": "AB"[people],
+                        "share_killing_people": float(item.human_dist[people]),
+                    }
+                )
+    columns = ["item_id", "people_die_under_option", "share_killing_people"]
+    return pd.DataFrame(rows, columns=columns)
 
 
 @dataclass

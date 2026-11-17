@@ -163,6 +163,9 @@ This comparison is indicative, not like for like:
   overall score.
 - The base models differ: Llama-3-70B here, Llama-3.1-70B there. Ours scores 4.0 against
   their 1.21.
+- SimBench's human answers for MoralMachine look reversed
+  ([below](#moralmachine-answers-look-reversed)). Correcting them would barely move the
+  scores here, and may raise the published scores of stronger models by more.
 
 ### On SubPOP's own format
 
@@ -215,6 +218,49 @@ Matching is by wording only. A repeated question that was reworded heavily would
 missed, and topical closeness between unmatched Pew questions is not measured. Thresholds
 were set by reading samples: a similarity of 95 or more was the same question, 80 to 94
 was mostly another item of the same battery, and below 80 looked unrelated.
+
+### MoralMachine answers look reversed
+
+An [open issue](https://github.com/pitehu/SimBench_release/issues/2) on SimBench's
+repository reports that the human answers for its 500 MoralMachine items are the wrong way
+round: option A ("Stay") holds the share of respondents who spared the group that dies if
+the car stays, not the share who chose to stay. The SimBench authors had not replied to it
+as of 17 November 2026.
+
+The raw Moral Machine data was not checked here, but the published answers are implausible
+on their own. In the 51 items where one outcome kills only animals and the other only
+people, the majority is recorded as choosing to kill the people in 50.
+
+Everything else in this README is scored on the data as published. This is what changes
+with those 500 answers reversed, in SimBench's format (as published → reversed):
+
+| Model | Base, all items | Adapter, all items | Gain, all items | Base, MoralMachine | Adapter, MoralMachine |
+|---|---|---|---|---|---|
+| Mistral-7B | 7.5 → 8.6 | 22.9 → 23.0 | 15.4 → 14.4 | −30.5 → −2.7 | −2.3 → −1.9 |
+| Llama-2-7B | −9.5 → −8.5 | 3.2 → 3.7 | 12.7 → 12.2 | −28.3 → −1.2 | −22.0 → −7.7 |
+| Llama-2-13B | −42.4 → −40.3 | 20.6 → 21.3 | 62.9 → 61.6 | −123.8 → −67.0 | −18.9 → 2.0 |
+| Llama-3-70B | 4.0 → 4.8 | 34.6 → 34.5 | 30.6 → 29.7 | −18.4 → 2.3 | 0.7 → −1.1 |
+
+- **The overall results hold.** In either prompt format, no overall score moves by more
+  than 2.1 points and no gain by more than 1.3. The question-blind score goes from 19.4 to
+  18.7.
+- **The MoralMachine row should not be read as a result.** As published, the adapters
+  appear to gain 6 to 105 points on it in SimBench's format. Reversed, three of those four
+  gains fall to between −7 and 1. Either way round, and in either format, no adapter scores
+  above 2 on MoralMachine.
+- **Non-survey tasks move more,** because MoralMachine is 500 of their 3,682 items: scores
+  by up to 7.7 points and gains by up to 4.9. In SimBench's format three of the four
+  adapters still gain 10 points or more there.
+- **Published scores may move more than these.** If the leaderboard was scored on the same
+  data, a model that predicts Moral Machine answers well is being marked down for it. The
+  issue reports one model going from −92.7 to 59.9 on MoralMachine once the answers are
+  reversed. The scores here are near zero on MoralMachine either way, so the comparison in
+  [Next to published SimBench scores](#next-to-published-simbench-scores) may flatter the
+  adapters.
+
+The numbers are in `reports/tables/moralmachine_reversed.csv` and
+`moralmachine_animals_vs_people.csv`. The calibration controls were not recomputed with
+reversed answers.
 
 ### Caveats
 

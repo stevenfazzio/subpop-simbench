@@ -1,0 +1,25 @@
+model,model_name,condition,subset,n,base,base_reversed,adapter,adapter_reversed,gain,gain_reversed,question_blind,question_blind_reversed
+mistral-7b,Mistral-7B,simbench,MoralMachine,500,-30.5078,-2.6737,-2.3225,-1.9267,28.1853,0.7471,3.1233,-14.6255
+mistral-7b,Mistral-7B,simbench,non-survey tasks,3682,-2.4828,1.297,11.6815,11.7353,14.1643,10.4383,19.3735,16.9633
+mistral-7b,Mistral-7B,simbench,all items,13510,7.5235,8.5536,22.9479,22.9625,15.4244,14.4089,19.4041,18.7472
+mistral-7b,Mistral-7B,subpop_skeleton,MoralMachine,500,3.0065,-5.0312,-3.6821,-2.2816,-6.6885,2.7496,3.1233,-14.6255
+mistral-7b,Mistral-7B,subpop_skeleton,non-survey tasks,3682,5.6357,4.5442,10.7152,10.9053,5.0795,6.3611,19.3735,16.9633
+mistral-7b,Mistral-7B,subpop_skeleton,all items,13510,9.3964,9.0989,22.7799,22.8318,13.3835,13.7328,19.4041,18.7472
+llama-2-7b,Llama-2-7B,simbench,MoralMachine,500,-28.3236,-1.2101,-22.0232,-7.6892,6.3004,-6.4791,3.1233,-14.6255
+llama-2-7b,Llama-2-7B,simbench,non-survey tasks,3682,-13.331,-9.6491,-10.1663,-8.2198,3.1648,1.4294,19.3735,16.9633
+llama-2-7b,Llama-2-7B,simbench,all items,13510,-9.5024,-8.4989,3.1916,3.7221,12.694,12.221,19.4041,18.7472
+llama-2-7b,Llama-2-7B,subpop_skeleton,MoralMachine,500,-6.3324,3.2832,-2.9253,-1.9445,3.4071,-5.2277,3.1233,-14.6255
+llama-2-7b,Llama-2-7B,subpop_skeleton,non-survey tasks,3682,-5.2525,-3.9467,-7.2541,-7.1209,-2.0016,-3.1742,19.3735,16.9633
+llama-2-7b,Llama-2-7B,subpop_skeleton,all items,13510,-9.9609,-9.605,11.4424,11.4787,21.4033,21.0837,19.4041,18.7472
+llama-2-13b,Llama-2-13B,simbench,MoralMachine,500,-123.7699,-67.0136,-18.8852,1.9712,104.8847,68.9847,3.1233,-14.6255
+llama-2-13b,Llama-2-13B,simbench,non-survey tasks,3682,-44.6641,-36.9568,6.4026,9.2348,51.0666,46.1916,19.3735,16.9633
+llama-2-13b,Llama-2-13B,simbench,all items,13510,-42.3633,-40.2628,20.5666,21.3385,62.9299,61.6013,19.4041,18.7472
+llama-2-13b,Llama-2-13B,subpop_skeleton,MoralMachine,500,-31.5411,-2.0968,-1.0556,-1.7967,30.4855,0.3002,3.1233,-14.6255
+llama-2-13b,Llama-2-13B,subpop_skeleton,non-survey tasks,3682,-9.1534,-5.155,13.5347,13.4341,22.6881,18.5891,19.3735,16.9633
+llama-2-13b,Llama-2-13B,subpop_skeleton,all items,13510,-9.1905,-8.1008,23.3344,23.307,32.5249,31.4078,19.4041,18.7472
+llama-3-70b,Llama-3-70B,simbench,MoralMachine,500,-18.4086,2.3266,0.6702,-1.1124,19.0788,-3.439,3.1233,-14.6255
+llama-3-70b,Llama-3-70B,simbench,non-survey tasks,3682,1.181,3.9967,26.9474,26.7053,25.7664,22.7086,19.3735,16.9633
+llama-3-70b,Llama-3-70B,simbench,all items,13510,4.011,4.7784,34.5696,34.5036,30.5586,29.7252,19.4041,18.7472
+llama-3-70b,Llama-3-70B,subpop_skeleton,MoralMachine,500,2.9976,-8.2822,-2.1742,0.6347,-5.1718,8.9169,3.1233,-14.6255
+llama-3-70b,Llama-3-70B,subpop_skeleton,non-survey tasks,3682,1.5726,0.0409,22.2756,22.657,20.703,22.6162,19.3735,16.9633
+llama-3-70b,Llama-3-70B,subpop_skeleton,all items,13510,4.5185,4.1011,30.7101,30.814,26.1915,26.7129,19.4041,18.7472

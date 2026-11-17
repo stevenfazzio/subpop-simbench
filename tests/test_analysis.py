@@ -4,15 +4,18 @@ import pytest
 
 from subpop_simbench.analysis import (
     TIERS,
+    animals_versus_people,
     best_temperature,
     best_temperature_per_group,
     bootstrap_ci,
+    casualties,
     match_letter_usage,
     pad,
     prepare_items,
     question_blind_predictions,
     scores_at,
     shapes_from_other_questions,
+    swap_first_two_options,
     tier_of,
 )
 from subpop_simbench.scoring import score_predictions
@@ -128,3 +131,30 @@ def test_match_letter_usage_moves_the_average_not_the_ranking():
     assert abs(out[:, 0].mean() - 0.5) < abs(pred[:, 0].mean() - 0.5)
     # Items keep their order: the one most confident in option A is still the most confident.
     assert out[:, 0].argsort().tolist() == pred[:, 0].argsort().tolist()
+
+
+def test_swap_first_two_options_touches_only_the_given_rows():
+    human = np.array([[0.2, 0.8, 0.0], [0.6, 0.3, 0.1]])
+    out = swap_first_two_options(human, np.array([True, False]))
+    assert out.tolist() == [[0.8, 0.2, 0.0], [0.6, 0.3, 0.1]]
+    assert human[0].tolist() == [0.2, 0.8, 0.0]  # the input is left alone
+
+
+def test_animals_versus_people_reports_the_share_killing_the_people():
+    pets = "Stay, outcome: the car drives on.\nDead:\n * 1 cat\n * 2 dogs"
+    child = "Swerve, outcome: the car hits a barrier.\nDead:\n * 1 boy"
+    mixed = "Stay, outcome: the car drives on.\nDead:\n * 1 man\n * 1 dog"
+    assert casualties(pets) == ["cat", "dogs"]
+    items = pd.DataFrame(
+        {
+            "item_id": ["m1", "m2", "m3", "x"],
+            "dataset_name": ["MoralMachine", "MoralMachine", "MoralMachine", "Jester"],
+            "option_texts": [[pets, child], [child, pets], [mixed, child], [pets, child]],
+            "human_dist": [[0.1, 0.9], [0.7, 0.3], [0.5, 0.5], [0.1, 0.9]],
+        }
+    )
+    out = animals_versus_people(items)
+    # m3 mixes a man and a dog, and x belongs to another dataset.
+    assert out["item_id"].tolist() == ["m1", "m2"]
+    assert out["people_die_under_option"].tolist() == ["B", "A"]
+    assert out["share_killing_people"].tolist() == pytest.approx([0.9, 0.7])

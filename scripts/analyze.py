@@ -16,6 +16,11 @@ Writes CSVs to reports/tables/:
                                  shifted to the human average
     condition_c_by_subgroup.csv  SubPOP's own format: subgroups it trained on vs unseen
     overlap_opinionqa.csv        OpinionQA scores by training-question match status
+    moralmachine_reversed.csv    scores if MoralMachine's human answers, which look reversed
+                                 in SimBench's data, were the other way round
+    moralmachine_animals_vs_people.csv
+                                 the published answers to MoralMachine items that pit only
+                                 animals against only people
 
 Every per-model table also carries `question_blind`: the score, on the same items, of
 predicting each dataset's typical answer shape without reading the question.
@@ -26,8 +31,10 @@ import pandas as pd
 
 from subpop_simbench.analysis import (
     MODEL_PAIRS,
+    MORAL_MACHINE,
     QUESTION_BLIND,
     TIERS,
+    animals_versus_people,
     best_temperature,
     best_temperature_per_group,
     bootstrap_ci,
@@ -37,6 +44,7 @@ from subpop_simbench.analysis import (
     prepare_items,
     question_blind_predictions,
     scores_at,
+    swap_first_two_options,
 )
 from subpop_simbench.io import ITEMS_PATH, OVERLAP_PATH, RESULTS_DIR, TABLES_DIR
 from subpop_simbench.overlap import STATUSES
@@ -54,6 +62,43 @@ def _row(pair, mask, **keys) -> dict:
         "gain": (adapter - base).mean(),
         "question_blind": pair.frame["blind_dataset"].to_numpy()[mask].mean(),
     }
+
+
+def _moralmachine_reversed(pair, **keys) -> list[dict]:
+    """Scores with MoralMachine's two answers exchanged, on every slice that contains it.
+
+    The score's norm is each dataset's mean distance from uniform, which the exchange leaves
+    unchanged for two-option items.
+    """
+    frame = pair.frame
+    reversed_rows = (frame["dataset_name"] == MORAL_MACHINE).to_numpy()
+    if not reversed_rows.any():
+        return []
+    assert (frame.loc[reversed_rows, "n_options"] == 2).all(), "MoralMachine is not binary"
+    human = swap_first_two_options(pair.human, reversed_rows)
+    base = scores_at(pair.pred_base, human, pair.norm)
+    adapter = scores_at(pair.pred_adapter, human, pair.norm)
+    masks = {
+        MORAL_MACHINE: reversed_rows,
+        TIERS[2]: (frame["tier"] == TIERS[2]).to_numpy(),
+        "all items": np.ones(len(frame), dtype=bool),
+    }
+    return [
+        {
+            **keys,
+            "subset": subset,
+            "n": int(mask.sum()),
+            "base": pair.score_base[mask].mean(),
+            "base_reversed": base[mask].mean(),
+            "adapter": pair.score_adapter[mask].mean(),
+            "adapter_reversed": adapter[mask].mean(),
+            "gain": (pair.score_adapter - pair.score_base)[mask].mean(),
+            "gain_reversed": (adapter - base)[mask].mean(),
+            "question_blind": frame["blind_dataset"].to_numpy()[mask].mean(),
+            "question_blind_reversed": frame["blind_dataset_reversed"].to_numpy()[mask].mean(),
+        }
+        for subset, mask in masks.items()
+    ]
 
 
 def _subset_masks(frame: pd.DataFrame, have_overlap: bool) -> dict[str, np.ndarray]:
@@ -85,6 +130,13 @@ def main() -> None:
     blind = question_blind_predictions(items)
     for key, pred in blind.items():
         items[f"blind_{key}"] = scores_at(pred, human, norm)
+    # The dataset-shape baseline again, as if MoralMachine's answers were the other way round.
+    is_moralmachine = items["dataset_name"] == MORAL_MACHINE
+    pairs_of_dist_and_flag = zip(items["human_dist"], is_moralmachine, strict=True)
+    flipped = items.assign(human_dist=[d[::-1] if m else d for d, m in pairs_of_dist_and_flag])
+    items["blind_dataset_reversed"] = scores_at(
+        question_blind_predictions(flipped)["dataset"], pad(flipped["human_dist"], width), norm
+    )
     position = pd.Series(np.arange(len(items)), index=items["item_id"])
     blind_rows = [
         {"baseline": key, "description": QUESTION_BLIND[key], "subset": subset,
@@ -93,7 +145,9 @@ def main() -> None:
         for subset, mask in _subset_masks(items, have_overlap).items()
     ]  # fmt: skip
 
+    animals = animals_versus_people(items)
     overall, subsets, datasets, controls, subgroups, overlap = [], [], [], [], [], []
+    moralmachine = []
     for model, (stem, name) in MODEL_PAIRS.items():
         pairs = load_pairs(items, RESULTS_DIR, stem)
         if pairs is None:
@@ -118,6 +172,7 @@ def main() -> None:
 
             masks = _subset_masks(frame, have_overlap)
             subsets += [_row(pair, m, **keys, subset=s) for s, m in masks.items()]
+            moralmachine += _moralmachine_reversed(pair, **keys)
 
             for (split, dataset), idx in frame.groupby(["split", "dataset_name"]).indices.items():
                 mask = frame.index.isin(idx)
@@ -187,6 +242,8 @@ def main() -> None:
         "calibration_controls": controls,
         "condition_c_by_subgroup": subgroups,
         "overlap_opinionqa": overlap,
+        "moralmachine_reversed": moralmachine,
+        "moralmachine_animals_vs_people": animals.to_dict("records"),
     }
     frames = {}
     for filename, rows in tables.items():
@@ -210,6 +267,15 @@ def main() -> None:
     )
     print("\nCalibration controls")
     print(frames["calibration_controls"].drop(columns="model").round(2).to_string(index=False))
+    if len(animals):
+        killed = int((animals["share_killing_people"] > 0.5).sum())
+        print(
+            f"\nMoralMachine, animals against people: the published majority chooses the "
+            f"outcome that kills the people in {killed} of {len(animals)} items"
+        )
+    if "moralmachine_reversed" in frames:
+        print("\nScores with MoralMachine's answers reversed")
+        print(frames["moralmachine_reversed"].drop(columns="model").round(1).to_string(index=False))
     print(f"\nwrote {len(frames)} tables to {TABLES_DIR}")
 
 
