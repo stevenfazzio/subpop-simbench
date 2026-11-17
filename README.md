@@ -39,10 +39,10 @@ Two things put these numbers in proportion, both detailed
   option letters. With that corrected on both sides, every adapter is 10 to 16 points above
   its base model.
 
-An interactive version of every table in this section, with all 25 datasets, is in
-[`reports/figures/subpop_on_simbench.html`](reports/figures/subpop_on_simbench.html)
-(download and open it; it loads plotly from a CDN). The numbers behind it are in
-[`reports/tables/`](reports/tables/).
+An interactive version of every table in this section, with all 25 datasets, is at
+**<https://stevenfazzio.com/subpop-simbench/>**. Its source is
+[`reports/figures/subpop_on_simbench.html`](reports/figures/subpop_on_simbench.html), and
+the numbers behind it are in [`reports/tables/`](reports/tables/).
 
 ### Where the gain comes from
 
