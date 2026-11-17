@@ -270,6 +270,9 @@ less than 0.1.
 
 ## Licences and acknowledgements
 
+The code in this repository is MIT licensed ([LICENSE](LICENSE)). That does not extend to
+the third-party material it works with:
+
 SimBench data is CC BY-NC-SA 4.0 and is fetched, not committed. Three SubPOP files are
 vendored under BSD 3-Clause in `src/subpop_simbench/_vendor/subpop/`. The SubPOP adapters
 carry their base models' licences (Llama 2, Llama 3, Apache 2.0).

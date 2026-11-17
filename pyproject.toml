@@ -3,6 +3,9 @@ name = "subpop-simbench"
 version = "0.1.0"
 description = "Benchmarking SubPOP fine-tuned adapters on SimBench"
 readme = "README.md"
+# MIT for this project's code; the files vendored from SubPOP stay BSD 3-Clause.
+license = "MIT AND BSD-3-Clause"
+license-files = ["LICENSE", "src/subpop_simbench/_vendor/subpop/LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "accelerate",
