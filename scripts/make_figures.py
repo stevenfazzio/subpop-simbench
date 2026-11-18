@@ -2,10 +2,14 @@
 
     uv run python scripts/make_figures.py
 
-Writes reports/figures/subpop_on_simbench.html: one page, four charts. Each chart is a set
-of dumbbells running from a base model's SimBench score to its score with the SubPOP
-adapter, next to what a predictor that never reads the question scores. A selector at the
-top switches all four between the two prompt formats that cover the whole benchmark.
+Writes reports/figures/subpop_on_simbench.html: one page. Its first four charts are sets of
+dumbbells running from a base model's SimBench score to its score with the SubPOP adapter,
+next to what a predictor that never reads the question scores. A selector at the top
+switches all four between the two prompt formats that cover the whole benchmark.
+
+A last section, drawn when reports/tables/retrain.csv exists, sets the adapter retrained
+here beside the released one under all three prompt formats, and shows its training and
+validation loss per epoch.
 """
 
 import html
@@ -17,7 +21,7 @@ import plotly.graph_objects as go
 from plotly.offline import get_plotlyjs_version
 from plotly.subplots import make_subplots
 
-from subpop_simbench.analysis import MODEL_PAIRS
+from subpop_simbench.analysis import MODEL_PAIRS, RELEASED, RETRAINED
 from subpop_simbench.io import FIGURES_DIR, TABLES_DIR
 
 FORMATS = {
@@ -75,6 +79,13 @@ SUBSET_LABELS = {
     "no matching training question": "No matching training question",
 }
 ROW_HEIGHT = 26
+# The retraining section shows every format at once, including SubPOP's own.
+RETRAIN_FORMATS = {**FORMATS, "subpop_exact": "SubPOP's exact format (964 items)"}
+RETRAIN_SHORT = {
+    "simbench": "SimBench's own",
+    "subpop_skeleton": "SubPOP's layout",
+    "subpop_exact": "SubPOP's exact",
+}
 
 
 def _hover(title: str) -> str:
@@ -301,17 +312,198 @@ def wide_table(rows: pd.DataFrame, order: list[str], first: str) -> str:
     return f"<table><thead><tr>{head}</tr></thead><tbody>{''.join(body)}</tbody></table>"
 
 
-def chart_block(fig: go.Figure, div_id: str, table: str, condition: str, wide: bool) -> str:
-    """A chart and its table. On a narrow screen the chart scrolls sideways inside its card."""
+def chart_block(fig: go.Figure, div_id: str, table: str, condition: str | None, wide: bool) -> str:
+    """A chart and its table. On a narrow screen the chart scrolls sideways inside its card.
+
+    With a `condition` the block shows only while that prompt format is selected.
+    """
     plot = fig.to_html(
         full_html=False, include_plotlyjs=False, div_id=div_id,
         config={"displayModeBar": False, "responsive": True},
     )  # fmt: skip
     size = "wide" if wide else "mid"
+    classes = f"fmt fmt-{condition}" if condition else "always"
     return (
-        f'<div class="fmt fmt-{condition}"><div class="scroll"><div class="plot {size}">'
+        f'<div class="{classes}"><div class="scroll"><div class="plot {size}">'
         f"{plot}</div></div><details><summary>Show as a table</summary>{table}</details></div>"
     )
+
+
+def retrain_rows(retrain: pd.DataFrame, overall: pd.DataFrame, model: str) -> pd.DataFrame:
+    """Dumbbell rows per prompt format: the released adapter, then each retrained checkpoint."""
+    rows = retrain[
+        (retrain["model"] == model)
+        & (retrain["subset"] == "all items")
+        & (retrain["reference"] == RELEASED)
+    ]
+    blind = overall[overall["model"] == model].set_index("condition")["question_blind"]
+    out = []
+    for condition, group in rows.groupby("condition", sort=False):
+        first = group.iloc[0]
+        shared = {"condition": condition, "n": first["n"], "base": first["base"]}
+        out.append({**shared, "label": "Released adapter", "adapter": first["reference_score"]})
+        for row in group.itertuples():
+            kind = "lowest validation loss" if row.run == "best validation loss" else "final"
+            out.append(
+                {
+                    **shared,
+                    "label": f"Retrained, epoch {row.epoch} ({kind})",
+                    "adapter": row.score,
+                    "difference": row.difference,
+                    "ci_low": row.ci_low,
+                    "ci_high": row.ci_high,
+                }
+            )
+    out = pd.DataFrame(out)
+    out["gain"] = out["adapter"] - out["base"]
+    out["question_blind"] = out["condition"].map(blind)
+    return out
+
+
+def retrain_chart(rows: pd.DataFrame, order: list[str], rng) -> go.Figure:
+    """One panel per prompt format, the same three adapters and the same scale in each."""
+    formats = [c for c in RETRAIN_FORMATS if c in set(rows["condition"])]
+    fig = make_subplots(
+        rows=1, cols=len(formats), shared_yaxes=True, horizontal_spacing=0.025,
+        subplot_titles=[RETRAIN_FORMATS[c] for c in formats],
+    )  # fmt: skip
+    for col, condition in enumerate(formats, start=1):
+        sub = rows[rows["condition"] == condition].set_index("label").loc[order].reset_index()
+        title = f"{RETRAIN_SHORT[condition]} format · "
+        add_dumbbells(fig, sub, title, legend=col == 1, labels=True, row=1, col=col)
+    return style(fig, len(order), rng, left=300, order=order)
+
+
+def retrain_table(rows: pd.DataFrame, order: list[str]) -> str:
+    """Formats down, adapters across, each retrained score with its gap to the released one."""
+    head = '<th>Prompt format</th><th class="num">Items</th><th class="num">Base model</th>'
+    for label in order:
+        head += f'<th class="num">{html.escape(label)}</th>'
+        if label != order[0]:
+            head += '<th class="num">Minus released (95% interval)</th>'
+    body = []
+    indexed = rows.set_index(["condition", "label"])
+    for condition in [c for c in RETRAIN_FORMATS if c in set(rows["condition"])]:
+        first = indexed.loc[(condition, order[0])]
+        cells = (
+            f"<td>{html.escape(RETRAIN_FORMATS[condition])}</td>"
+            f'<td class="num">{int(first["n"]):,}</td><td class="num">{first["base"]:.1f}</td>'
+        )
+        for label in order:
+            row = indexed.loc[(condition, label)]
+            cells += f'<td class="num">{row["adapter"]:.1f}</td>'
+            if label != order[0]:
+                cells += (
+                    f'<td class="num">{row["difference"]:+.1f} '
+                    f"({row['ci_low']:+.1f} to {row['ci_high']:+.1f})</td>"
+                )
+        body.append(f"<tr>{cells}</tr>")
+    return f"<table><thead><tr>{head}</tr></thead><tbody>{''.join(body)}</tbody></table>"
+
+
+def loss_chart(epochs: pd.DataFrame, references: dict[str, float]) -> go.Figure:
+    """Training and held-out loss per epoch, over the losses of predictors that need no model.
+
+    Both lines are the retrained adapter, so both wear its colour: solid for the questions
+    held out, dotted for the ones trained on. The larger rings are the epochs scored on
+    SimBench.
+    """
+    last = epochs.iloc[-1]
+    best = epochs[epochs["lowest_val_loss"]].iloc[0]
+    scored = epochs["lowest_val_loss"] | (epochs["epoch"] == last["epoch"])
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=epochs["epoch"], y=epochs["train_loss"], name="Questions trained on",
+            meta="loss", mode="lines", line={"color": T["adapter"], "width": 2, "dash": "dot"},
+            hovertemplate="Questions trained on: <b>%{y:.4f}</b><extra></extra>",
+        )
+    )  # fmt: skip
+    fig.add_trace(
+        go.Scatter(
+            x=epochs["epoch"], y=epochs["val_loss"], name="Questions held out",
+            meta="loss", mode="lines+markers", line={"color": T["adapter"], "width": 2},
+            marker={"color": T["adapter"], "size": [12 if s else 7 for s in scored],
+                    "line": {"color": T["surface"], "width": 2}},
+            hovertemplate="Questions held out: <b>%{y:.4f}</b><extra></extra>",
+        )
+    )  # fmt: skip
+    note = {"family": FONT, "size": 12, "color": T["ink2"]}
+    for label, value in references.items():
+        fig.add_shape(
+            type="line", xref="paper", x0=0, x1=1, y0=value, y1=value, layer="below",
+            line={"color": T["muted"], "width": 1, "dash": "dash"},
+        )  # fmt: skip
+        below = value < epochs["train_loss"].min()
+        fig.add_annotation(
+            xref="paper", x=1, y=value, text=f"{label}: {value:.4f}", showarrow=False,
+            xanchor="right", yanchor="top" if below else "bottom", font=note, name="note",
+        )  # fmt: skip
+    fig.add_annotation(
+        x=best["epoch"], y=best["val_loss"], yshift=-12, showarrow=False, yanchor="top",
+        text=f"Lowest: epoch {int(best['epoch'])}, {best['val_loss']:.4f}", font=note,
+        name="note",
+    )  # fmt: skip
+    top = math.ceil(max(epochs["train_loss"].max(), epochs["val_loss"].max()) * 50) / 50
+    fig.update_layout(
+        height=380,
+        margin={"l": 56, "r": 28, "t": 62, "b": 48},
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font={"family": FONT, "size": 13, "color": T["ink2"]},
+        legend={"orientation": "h", "x": 0, "xref": "container", "xanchor": "left",
+                "y": 1.0, "yref": "container", "yanchor": "top",
+                "font": {"color": T["ink2"]}, "itemclick": False, "itemdoubleclick": False},
+        hoverlabel={"bgcolor": T["surface"], "bordercolor": T["axis"],
+                    "font": {"family": FONT, "color": T["ink"], "size": 13}},
+        hovermode="x unified", dragmode=False,
+    )  # fmt: skip
+    fig.update_xaxes(
+        title={"text": "Epoch", "standoff": 8}, range=[0.4, last["epoch"] + 0.6], dtick=1,
+        showgrid=False, zeroline=False, tickfont={"color": T["muted"]}, fixedrange=True,
+        ticks="", hoverformat="d", tickprefix="", unifiedhovertitle={"text": "Epoch %{x}"},
+    )  # fmt: skip
+    fig.update_yaxes(
+        title={"text": "Loss", "standoff": 8}, range=[0, top], gridcolor=T["grid"],
+        gridwidth=1, zeroline=True, zerolinecolor=T["axis"], zerolinewidth=1.5,
+        tickfont={"color": T["ink2"]}, tickformat=".2f", fixedrange=True, ticks="",
+    )  # fmt: skip
+    return fig
+
+
+def epochs_table(epochs: pd.DataFrame) -> str:
+    head = (
+        '<th class="num">Epoch</th><th class="num">Loss, questions trained on</th>'
+        '<th class="num">Loss, questions held out</th>'
+    )
+    body = "".join(
+        f'<tr><td class="num">{int(row.epoch)}</td><td class="num">{row.train_loss:.4f}</td>'
+        f'<td class="num">{row.val_loss:.4f}{" (lowest)" if row.lowest_val_loss else ""}</td></tr>'
+        for row in epochs.itertuples()
+    )
+    return f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
+
+
+RETRAIN_SECTION = """
+<section>
+  <h2>Retraining the {name} adapter</h2>
+  <p class="sub">SubPOP's released adapters fit only their own four base models. As a check
+  that the recipe can be rerun, the {name} adapter was trained again here from SubPOP's
+  data, for {n_epochs} epochs. Two checkpoints were scored: epoch {best_epoch}, which had the
+  lowest loss on held-out questions, and the final one. Both land within {max_gap} points of
+  the released adapter under every prompt format, and on {closer_low} to {closer_high} of
+  items their predictions are nearer the released adapter's than the base model's. The
+  format selector does not apply here: the panels are the three formats.</p>
+  {chart}
+  <p class="sub">Loss per epoch on the questions trained on and on those held out ({held_out};
+  lower is better). The larger rings are the two epochs scored above. The held-out loss
+  stops falling after a few epochs while the training loss keeps going, yet the final epoch
+  scores {exact_gain} points higher than epoch {best_epoch} on SubPOP's exact format. The
+  released adapter's {released_loss} on these held-out questions is not a target to compare
+  with: it is below the {question_average} that comes from knowing each question's average
+  answer, so it has probably trained on most of them.</p>
+  {loss}
+</section>
+"""
 
 
 PAGE = """<!doctype html>
@@ -428,7 +620,7 @@ that baseline.</p>
   SimBench's data (see the notes at the foot of the page).</p>
   {datasets}
 </section>
-
+{retrain}
 <footer>
 <ul>
   <li>Scores are means over items of 100 × (1 − TVD / norm), where TVD is the total
@@ -475,10 +667,12 @@ function applyTheme() {{
         layout[key + ".tickfont.color"] = t.muted;
       }} else if (key.startsWith("yaxis")) {{
         layout[key + ".tickfont.color"] = t.ink2;
+        layout[key + ".gridcolor"] = t.grid;
+        layout[key + ".zerolinecolor"] = t.axis;
       }}
     }});
-    (gd.layout.annotations || []).forEach((_, i) => {{
-      layout["annotations[" + i + "].font.color"] = t.ink;
+    (gd.layout.annotations || []).forEach((annotation, i) => {{
+      layout["annotations[" + i + "].font.color"] = annotation.name === "note" ? t.ink2 : t.ink;
     }});
     const byKind = {{}};
     gd.data.forEach((trace, i) => (byKind[trace.meta] = byKind[trace.meta] || []).push(i));
@@ -489,6 +683,12 @@ function applyTheme() {{
       if (kind === "connector") update = {{"line.color": t.axis}};
       // A tick is drawn with the marker's outline, so the outline carries its colour.
       if (kind === "blindtick") update = {{"marker.color": t.blind, "marker.line.color": t.blind}};
+      // Both loss lines are the adapter's, told apart by their dash.
+      if (kind === "loss") {{
+        update = {{
+          "line.color": t.adapter, "marker.color": t.adapter, "marker.line.color": t.surface,
+        }};
+      }}
       Plotly.restyle(gd, update, indices);
     }});
     Plotly.relayout(gd, layout);
@@ -516,6 +716,69 @@ window.addEventListener("load", () => {{
 </body>
 </html>
 """
+
+
+def retrain_section(overall: pd.DataFrame) -> str:
+    """The retraining section, or nothing when its tables have not been written."""
+    paths = {
+        name: TABLES_DIR / f"{name}.csv"
+        for name in ("retrain", "retrain_epochs", "retrain_validation_reference")
+    }
+    if not all(path.exists() for path in paths.values()):
+        return ""
+    retrain, epochs, reference = (pd.read_csv(path) for path in paths.values())
+    sections = []
+    for model, spec in RETRAINED.items():
+        rows = retrain_rows(retrain, overall, model)
+        epochs_here = epochs[epochs["model"] == model]
+        if rows.empty or epochs_here.empty:
+            continue
+        name = MODEL_PAIRS[model][1]
+        order = list(dict.fromkeys(rows["label"]))
+        chart = chart_block(
+            retrain_chart(rows, order, x_range(rows["base"], rows["adapter"])),
+            f"retrain-{model}", retrain_table(rows, order), None, True,
+        )  # fmt: skip
+        validation = reference[reference["split"] == "val"].set_index("predictor")
+        released_loss = spec["measured_validation_loss"][RELEASED]
+        lines = {
+            "Knowing each question's average answer": validation.loc["question average", "loss"],
+            "Released adapter on these questions": released_loss,
+            "Lowest possible": validation.loc["lowest possible", "loss"],
+        }
+        loss = chart_block(
+            loss_chart(epochs_here, lines), f"retrain-loss-{model}",
+            epochs_table(epochs_here), None, False,
+        )  # fmt: skip
+        compared = retrain[
+            (retrain["model"] == model)
+            & (retrain["subset"] == "all items")
+            & (retrain["reference"] == RELEASED)
+        ]
+        best_epoch = int(epochs_here.loc[epochs_here["lowest_val_loss"], "epoch"].iloc[0])
+        between = retrain[
+            (retrain["model"] == model)
+            & (retrain["subset"] == "all items")
+            & (retrain["reference"] != RELEASED)
+            & (retrain["condition"] == "subpop_exact")
+        ]
+        sections.append(
+            RETRAIN_SECTION.format(
+                name=html.escape(name),
+                n_epochs=int(epochs_here["epoch"].max()),
+                best_epoch=best_epoch,
+                max_gap=f"{math.ceil(compared['difference'].abs().max() * 10) / 10:.1f}",
+                closer_low=f"{math.floor(compared['share_closer_to_reference'].min() * 100)}%",
+                closer_high=f"{math.floor(compared['share_closer_to_reference'].max() * 100)}%",
+                held_out=f"{int(validation['n_examples'].iloc[0]):,} prompts",
+                exact_gain=f"{between['difference'].iloc[0]:.1f}",
+                released_loss=f"{released_loss:.3f}",
+                question_average=f"{validation.loc['question average', 'loss']:.3f}",
+                chart=chart,
+                loss=loss,
+            )
+        )
+    return "\n".join(sections)
 
 
 def main() -> None:
@@ -611,6 +874,8 @@ def main() -> None:
     mm_best = flipped.loc[flipped["subset"] == "MoralMachine", "adapter_reversed"].max()
     animals = pd.read_csv(TABLES_DIR / "moralmachine_animals_vs_people.csv")
 
+    retrain_html = retrain_section(overall)
+
     exact = overall[overall["condition"] == "subpop_exact"]
     exact_text = "; ".join(
         f"{row.model_name} {row.adapter:.1f} (base {row.base:.1f})" for row in exact.itertuples()
@@ -634,6 +899,7 @@ def main() -> None:
         recalibrated="\n".join(blocks["recalibrated"]),
         subsets="\n".join(blocks["subsets"]),
         datasets="\n".join(blocks["datasets"]),
+        retrain=retrain_html,
         exact=html.escape(exact_text),
         mm_animals=len(animals),
         mm_killed=int((animals["share_killing_people"] > 0.5).sum()),

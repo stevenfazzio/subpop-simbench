@@ -1,0 +1,55 @@
+model,model_name,condition,subset,n,run,epoch,reference,base,score,reference_score,difference,ci_low,ci_high,tvd_to_reference,tvd_to_base,share_closer_to_reference
+mistral-7b,Mistral-7B,simbench,all items,13510,best validation loss,7,released adapter,7.5235,23.18,22.9479,0.2321,-0.0867,0.5365,0.0736,0.1659,0.8515
+mistral-7b,Mistral-7B,simbench,pop split,7167,best validation loss,7,released adapter,3.802,20.1584,19.9243,0.2341,-0.1947,0.652,0.0695,0.1506,0.8381
+mistral-7b,Mistral-7B,simbench,grouped split,6343,best validation loss,7,released adapter,11.7284,26.5942,26.3643,0.2299,-0.2241,0.6873,0.0782,0.1833,0.8666
+mistral-7b,Mistral-7B,simbench,OpinionQA,1484,best validation loss,7,released adapter,31.6385,59.8982,64.6712,-4.773,-5.6704,-3.9193,0.0717,0.1826,0.965
+mistral-7b,Mistral-7B,simbench,other opinion surveys,8344,best validation loss,7,released adapter,7.6501,22.0581,20.4988,1.5592,1.171,1.9611,0.0842,0.1858,0.8519
+mistral-7b,Mistral-7B,simbench,non-survey tasks,3682,best validation loss,7,released adapter,-2.4828,10.9236,11.6815,-0.758,-1.2737,-0.2336,0.0505,0.1143,0.805
+mistral-7b,Mistral-7B,simbench,all but OpinionQA,12026,best validation loss,7,released adapter,4.5477,18.649,17.7992,0.8498,0.5264,1.1584,0.0738,0.1639,0.8375
+mistral-7b,Mistral-7B,simbench,no matching training question,12564,best validation loss,7,released adapter,5.7521,20.8715,20.5569,0.3146,-0.0195,0.6338,0.0731,0.1648,0.8459
+mistral-7b,Mistral-7B,subpop_skeleton,all items,13510,best validation loss,7,released adapter,9.3964,21.3383,22.7799,-1.4416,-1.7176,-1.1608,0.0657,0.175,0.8876
+mistral-7b,Mistral-7B,subpop_skeleton,pop split,7167,best validation loss,7,released adapter,7.0588,18.2749,19.4189,-1.1439,-1.5245,-0.7569,0.0635,0.1642,0.8949
+mistral-7b,Mistral-7B,subpop_skeleton,grouped split,6343,best validation loss,7,released adapter,12.0377,24.7996,26.5776,-1.778,-2.1807,-1.3863,0.0681,0.1873,0.8794
+mistral-7b,Mistral-7B,subpop_skeleton,OpinionQA,1484,best validation loss,7,released adapter,24.9152,68.2518,68.7387,-0.4869,-1.0684,0.075,0.0419,0.2234,0.9933
+mistral-7b,Mistral-7B,subpop_skeleton,other opinion surveys,8344,best validation loss,7,released adapter,8.2959,18.2355,19.9299,-1.6944,-2.0443,-1.3661,0.0759,0.19,0.8769
+mistral-7b,Mistral-7B,subpop_skeleton,non-survey tasks,3682,best validation loss,7,released adapter,5.6357,9.4616,10.7152,-1.2536,-1.8238,-0.6961,0.0521,0.1216,0.8694
+mistral-7b,Mistral-7B,subpop_skeleton,all but OpinionQA,12026,best validation loss,7,released adapter,7.4814,15.5492,17.1086,-1.5594,-1.8558,-1.2559,0.0686,0.169,0.8746
+mistral-7b,Mistral-7B,subpop_skeleton,no matching training question,12564,best validation loss,7,released adapter,8.0583,18.5341,20.1002,-1.5661,-1.8437,-1.2887,0.0673,0.173,0.8838
+mistral-7b,Mistral-7B,subpop_exact,all items,964,best validation loss,7,released adapter,28.3796,76.5053,76.6072,-0.1019,-0.6182,0.4242,0.029,0.2374,0.9979
+mistral-7b,Mistral-7B,subpop_exact,no matching training question,344,best validation loss,7,released adapter,26.4645,73.6547,74.6456,-0.9909,-1.8272,-0.2068,0.0272,0.2436,1.0
+mistral-7b,Mistral-7B,simbench,all items,13510,final epoch,20,released adapter,7.5235,22.6408,22.9479,-0.3071,-0.642,0.0048,0.0775,0.171,0.8622
+mistral-7b,Mistral-7B,simbench,pop split,7167,final epoch,20,released adapter,3.802,20.2961,19.9243,0.3718,-0.0571,0.797,0.0724,0.1566,0.8581
+mistral-7b,Mistral-7B,simbench,grouped split,6343,final epoch,20,released adapter,11.7284,25.2902,26.3643,-1.0741,-1.5047,-0.6099,0.0832,0.1872,0.8668
+mistral-7b,Mistral-7B,simbench,OpinionQA,1484,final epoch,20,released adapter,31.6385,61.0097,64.6712,-3.6615,-4.6588,-2.6877,0.0784,0.1861,0.9508
+mistral-7b,Mistral-7B,simbench,other opinion surveys,8344,final epoch,20,released adapter,7.6501,20.6123,20.4988,0.1135,-0.2863,0.525,0.0879,0.1897,0.8564
+mistral-7b,Mistral-7B,simbench,non-survey tasks,3682,final epoch,20,released adapter,-2.4828,11.7734,11.6815,0.0919,-0.4608,0.63,0.0533,0.1223,0.8395
+mistral-7b,Mistral-7B,simbench,all but OpinionQA,12026,final epoch,20,released adapter,4.5477,17.9061,17.7992,0.1069,-0.2155,0.4414,0.0773,0.1691,0.8512
+mistral-7b,Mistral-7B,simbench,no matching training question,12564,final epoch,20,released adapter,5.7521,20.332,20.5569,-0.2249,-0.5473,0.097,0.0769,0.1697,0.8567
+mistral-7b,Mistral-7B,subpop_skeleton,all items,13510,final epoch,20,released adapter,9.3964,20.5985,22.7799,-2.1814,-2.4577,-1.904,0.0669,0.1762,0.8869
+mistral-7b,Mistral-7B,subpop_skeleton,pop split,7167,final epoch,20,released adapter,7.0588,16.8478,19.4189,-2.5711,-2.9797,-2.1887,0.0643,0.1627,0.8843
+mistral-7b,Mistral-7B,subpop_skeleton,grouped split,6343,final epoch,20,released adapter,12.0377,24.8364,26.5776,-1.7412,-2.1659,-1.3399,0.0698,0.1915,0.8898
+mistral-7b,Mistral-7B,subpop_skeleton,OpinionQA,1484,final epoch,20,released adapter,24.9152,69.3123,68.7387,0.5736,-0.0188,1.154,0.0437,0.2264,0.996
+mistral-7b,Mistral-7B,subpop_skeleton,other opinion surveys,8344,final epoch,20,released adapter,8.2959,17.6789,19.9299,-2.251,-2.6057,-1.9024,0.0777,0.1925,0.8837
+mistral-7b,Mistral-7B,subpop_skeleton,non-survey tasks,3682,final epoch,20,released adapter,5.6357,7.5809,10.7152,-3.1342,-3.6915,-2.6068,0.0516,0.1191,0.8501
+mistral-7b,Mistral-7B,subpop_skeleton,all but OpinionQA,12026,final epoch,20,released adapter,7.4814,14.5872,17.1086,-2.5214,-2.8383,-2.2038,0.0697,0.17,0.8734
+mistral-7b,Mistral-7B,subpop_skeleton,no matching training question,12564,final epoch,20,released adapter,8.0583,17.7374,20.1002,-2.3628,-2.642,-2.0872,0.0681,0.1739,0.8823
+mistral-7b,Mistral-7B,subpop_exact,all items,964,final epoch,20,released adapter,28.3796,78.0528,76.6072,1.4456,0.8067,2.1324,0.0367,0.2351,0.9979
+mistral-7b,Mistral-7B,subpop_exact,no matching training question,344,final epoch,20,released adapter,26.4645,75.8934,74.6456,1.2477,0.1818,2.3298,0.0352,0.2392,1.0
+mistral-7b,Mistral-7B,simbench,all items,13510,final epoch,20,best validation loss,7.5235,22.6408,23.18,-0.5392,-0.7034,-0.3795,0.0366,0.171,0.9625
+mistral-7b,Mistral-7B,simbench,pop split,7167,final epoch,20,best validation loss,3.802,20.2961,20.1584,0.1377,-0.1043,0.3789,0.0363,0.1566,0.9569
+mistral-7b,Mistral-7B,simbench,grouped split,6343,final epoch,20,best validation loss,11.7284,25.2902,26.5942,-1.304,-1.5147,-1.0886,0.0369,0.1872,0.9689
+mistral-7b,Mistral-7B,simbench,OpinionQA,1484,final epoch,20,best validation loss,31.6385,61.0097,59.8982,1.1115,0.7008,1.5334,0.0306,0.1861,1.0
+mistral-7b,Mistral-7B,simbench,other opinion surveys,8344,final epoch,20,best validation loss,7.6501,20.6123,22.0581,-1.4457,-1.6246,-1.2483,0.0397,0.1897,0.9735
+mistral-7b,Mistral-7B,simbench,non-survey tasks,3682,final epoch,20,best validation loss,-2.4828,11.7734,10.9236,0.8499,0.468,1.23,0.0318,0.1223,0.9226
+mistral-7b,Mistral-7B,simbench,all but OpinionQA,12026,final epoch,20,best validation loss,4.5477,17.9061,18.649,-0.7429,-0.913,-0.5616,0.0373,0.1691,0.9579
+mistral-7b,Mistral-7B,simbench,no matching training question,12564,final epoch,20,best validation loss,5.7521,20.332,20.8715,-0.5395,-0.7103,-0.3615,0.0369,0.1697,0.9601
+mistral-7b,Mistral-7B,subpop_skeleton,all items,13510,final epoch,20,best validation loss,9.3964,20.5985,21.3383,-0.7398,-0.8726,-0.5947,0.0299,0.1762,0.9628
+mistral-7b,Mistral-7B,subpop_skeleton,pop split,7167,final epoch,20,best validation loss,7.0588,16.8478,18.2749,-1.4272,-1.6249,-1.2141,0.03,0.1627,0.9495
+mistral-7b,Mistral-7B,subpop_skeleton,grouped split,6343,final epoch,20,best validation loss,12.0377,24.8364,24.7996,0.0368,-0.1377,0.2203,0.0297,0.1915,0.9778
+mistral-7b,Mistral-7B,subpop_skeleton,OpinionQA,1484,final epoch,20,best validation loss,24.9152,69.3123,68.2518,1.0605,0.676,1.4531,0.0255,0.2264,1.0
+mistral-7b,Mistral-7B,subpop_skeleton,other opinion surveys,8344,final epoch,20,best validation loss,8.2959,17.6789,18.2355,-0.5566,-0.7044,-0.4047,0.032,0.1925,0.9802
+mistral-7b,Mistral-7B,subpop_skeleton,non-survey tasks,3682,final epoch,20,best validation loss,5.6357,7.5809,9.4616,-1.8806,-2.208,-1.53,0.0268,0.1191,0.9082
+mistral-7b,Mistral-7B,subpop_skeleton,all but OpinionQA,12026,final epoch,20,best validation loss,7.4814,14.5872,15.5492,-0.962,-1.1093,-0.8249,0.0304,0.17,0.9582
+mistral-7b,Mistral-7B,subpop_skeleton,no matching training question,12564,final epoch,20,best validation loss,8.0583,17.7374,18.5341,-0.7967,-0.9376,-0.651,0.0301,0.1739,0.96
+mistral-7b,Mistral-7B,subpop_exact,all items,964,final epoch,20,best validation loss,28.3796,78.0528,76.5053,1.5474,1.0068,2.0572,0.027,0.2351,0.999
+mistral-7b,Mistral-7B,subpop_exact,no matching training question,344,final epoch,20,best validation loss,26.4645,75.8934,73.6547,2.2387,1.3694,3.101,0.027,0.2392,1.0

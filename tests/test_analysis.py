@@ -9,6 +9,7 @@ from subpop_simbench.analysis import (
     best_temperature_per_group,
     bootstrap_ci,
     casualties,
+    compare_to_reference,
     match_letter_usage,
     pad,
     prepare_items,
@@ -17,6 +18,7 @@ from subpop_simbench.analysis import (
     shapes_from_other_questions,
     swap_first_two_options,
     tier_of,
+    tvd,
 )
 from subpop_simbench.scoring import score_predictions
 
@@ -158,3 +160,38 @@ def test_animals_versus_people_reports_the_share_killing_the_people():
     assert out["item_id"].tolist() == ["m1", "m2"]
     assert out["people_die_under_option"].tolist() == ["B", "A"]
     assert out["share_killing_people"].tolist() == pytest.approx([0.9, 0.7])
+
+
+def test_tvd_is_half_the_absolute_difference():
+    a = np.array([[1.0, 0.0], [0.5, 0.5]])
+    b = np.array([[0.0, 1.0], [0.5, 0.5]])
+    assert tvd(a, b).tolist() == [1.0, 0.0]
+
+
+def test_compare_to_reference_reports_score_gap_and_whose_predictions_it_resembles():
+    base = np.array([[0.9, 0.1], [0.9, 0.1], [0.9, 0.1], [0.9, 0.1]])
+    reference = np.array([[0.5, 0.5], [0.4, 0.6], [0.3, 0.7], [0.2, 0.8]])
+    run = reference.copy()
+    run[3] = [0.85, 0.15]  # on one item the run sits with the base model instead
+    reference_score = np.array([10.0, 20.0, 30.0, 40.0])
+    score = reference_score + np.array([1.0, 1.0, 1.0, -7.0])
+
+    out = compare_to_reference(score, run, reference_score, reference, base)
+    assert out["score"] == pytest.approx(24.0)
+    assert out["reference_score"] == pytest.approx(25.0)
+    assert out["difference"] == pytest.approx(-1.0)
+    assert out["ci_low"] <= out["difference"] <= out["ci_high"]
+    assert out["share_closer_to_reference"] == pytest.approx(0.75)
+    assert out["tvd_to_reference"] == pytest.approx(0.65 / 4)
+    assert out["tvd_to_base"] == pytest.approx((0.4 + 0.5 + 0.6 + 0.05) / 4)
+
+
+def test_a_run_compared_with_itself_differs_by_nothing():
+    rng = np.random.default_rng(0)
+    pred = rng.dirichlet(np.ones(3), size=20)
+    base = rng.dirichlet(np.ones(3), size=20)
+    score = rng.normal(size=20)
+    out = compare_to_reference(score, pred, score, pred, base)
+    assert out["difference"] == 0.0 and out["ci_low"] == 0.0 and out["ci_high"] == 0.0
+    assert out["tvd_to_reference"] == 0.0
+    assert out["share_closer_to_reference"] == 1.0

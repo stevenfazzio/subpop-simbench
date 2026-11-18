@@ -21,10 +21,23 @@ Writes CSVs to reports/tables/:
     moralmachine_animals_vs_people.csv
                                  the published answers to MoralMachine items that pit only
                                  animals against only people
+    retrain.csv                  adapters trained here beside the released one: score
+                                 difference with a paired bootstrap interval, and how close
+                                 the predictions are item by item
+    retrain_epochs.csv           training and validation loss per epoch, if the training
+                                 run is under data/adapters/
+    retrain_validation_reference.csv
+                                 what predictors that need no model lose on the training
+                                 and validation questions, if the training examples are on
+                                 disk
 
 Every per-model table also carries `question_blind`: the score, on the same items, of
 predicting each dataset's typical answer shape without reading the question.
 """
+
+import json
+import re
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -33,11 +46,14 @@ from subpop_simbench.analysis import (
     MODEL_PAIRS,
     MORAL_MACHINE,
     QUESTION_BLIND,
+    RELEASED,
+    RETRAINED,
     TIERS,
     animals_versus_people,
     best_temperature,
     best_temperature_per_group,
     bootstrap_ci,
+    compare_to_reference,
     load_pairs,
     match_letter_usage,
     pad,
@@ -46,8 +62,16 @@ from subpop_simbench.analysis import (
     scores_at,
     swap_first_two_options,
 )
-from subpop_simbench.io import ITEMS_PATH, OVERLAP_PATH, RESULTS_DIR, TABLES_DIR
+from subpop_simbench.io import (
+    ADAPTERS_DIR,
+    ITEMS_PATH,
+    OVERLAP_PATH,
+    RESULTS_DIR,
+    TABLES_DIR,
+    TRAIN_EXAMPLES_PATH,
+)
 from subpop_simbench.overlap import STATUSES
+from subpop_simbench.train_data import reference_losses
 
 NO_MATCH = "no matching training question"
 
@@ -111,6 +135,79 @@ def _subset_masks(frame: pd.DataFrame, have_overlap: bool) -> dict[str, np.ndarr
     if have_overlap:
         masks[NO_MATCH] = (frame["status"] == STATUSES[3]).to_numpy()
     return {name: mask for name, mask in masks.items() if mask.any()}
+
+
+def _epoch_scored(run_dir: Path) -> int | None:
+    """The training epoch a SimBench run scored, from the adapter path in its metadata."""
+    adapter = json.loads((run_dir / "meta.json").read_text())["identity"]["model"]["adapter"]
+    match = re.fullmatch(r"epoch-(\d+)", Path(adapter or "").name)
+    return int(match.group(1)) if match else None
+
+
+def _retrained(items: pd.DataFrame, have_overlap: bool) -> tuple[list[dict], list[dict]]:
+    """Rows for retrain.csv and retrain_epochs.csv.
+
+    Each retrained checkpoint is set beside the released adapter, and each checkpoint after
+    the first beside the first, on the same slices as by_subset.csv.
+    """
+    comparisons, epochs = [], []
+    for model, spec in RETRAINED.items():
+        stem, name = MODEL_PAIRS[model]
+        runs = {RELEASED: load_pairs(items, RESULTS_DIR, stem)}
+        for run, tag in spec["runs"].items():
+            runs[run] = load_pairs(items, RESULTS_DIR, stem, adapter_tag=tag)
+        if any(pairs is None for pairs in runs.values()):
+            print(f"[{name}: retrained runs not all on disk, skipped]")
+            continue
+        first = next(iter(spec["runs"]))
+        for run, tag in spec["runs"].items():
+            for reference in [RELEASED] + ([first] if run != first else []):
+                for condition, pair in runs[run].items():
+                    other = runs[reference][condition]
+                    assert pair.frame["item_id"].equals(other.frame["item_id"])
+                    whole = len(pair.frame)
+                    for subset, mask in _subset_masks(pair.frame, have_overlap).items():
+                        if subset != "all items" and mask.sum() == whole:
+                            continue  # the same items under another name
+                        comparisons.append(
+                            {
+                                "model": model,
+                                "model_name": name,
+                                "condition": condition,
+                                "subset": subset,
+                                "n": int(mask.sum()),
+                                "run": run,
+                                "epoch": _epoch_scored(RESULTS_DIR / tag),
+                                "reference": reference,
+                                "base": pair.score_base[mask].mean(),
+                                **compare_to_reference(
+                                    pair.score_adapter[mask],
+                                    pair.pred_adapter[mask],
+                                    other.score_adapter[mask],
+                                    other.pred_adapter[mask],
+                                    pair.pred_base[mask],
+                                ),
+                            }
+                        )
+        run_dir = ADAPTERS_DIR / spec["training_tag"]
+        if (run_dir / "metrics.json").exists():
+            best = json.loads((run_dir / "meta.json").read_text()).get("best_epoch")
+            for row in json.loads((run_dir / "metrics.json").read_text()):
+                if not row["partial"]:
+                    epochs.append(
+                        {
+                            "model": model,
+                            "model_name": name,
+                            "epoch": row["epoch"],
+                            "train_loss": row["train_loss"],
+                            "val_loss": row["val_loss"],
+                            "lowest_val_loss": row["epoch"] == best,
+                            "train_minutes": row["train_seconds"] / 60,
+                        }
+                    )
+        else:
+            print(f"[{run_dir.name}: training run not on disk, retrain_epochs.csv left as is]")
+    return comparisons, epochs
 
 
 def main() -> None:
@@ -233,6 +330,18 @@ def main() -> None:
     if not overall:
         raise SystemExit(f"no complete base and adapter pair under {RESULTS_DIR}")
 
+    retrain, retrain_epochs = _retrained(items, have_overlap)
+    validation_reference = []
+    if TRAIN_EXAMPLES_PATH.exists():
+        examples = pd.read_parquet(
+            TRAIN_EXAMPLES_PATH, columns=["split", "qkey", "target", "n_options"]
+        )
+        validation_reference = reference_losses(examples).to_dict("records")
+    else:
+        print(
+            f"[{TRAIN_EXAMPLES_PATH.name} not found: retrain_validation_reference.csv left as is]"
+        )
+
     TABLES_DIR.mkdir(parents=True, exist_ok=True)
     tables = {
         "overall": overall,
@@ -244,6 +353,9 @@ def main() -> None:
         "overlap_opinionqa": overlap,
         "moralmachine_reversed": moralmachine,
         "moralmachine_animals_vs_people": animals.to_dict("records"),
+        "retrain": retrain,
+        "retrain_epochs": retrain_epochs,
+        "retrain_validation_reference": validation_reference,
     }
     frames = {}
     for filename, rows in tables.items():
@@ -276,6 +388,18 @@ def main() -> None:
     if "moralmachine_reversed" in frames:
         print("\nScores with MoralMachine's answers reversed")
         print(frames["moralmachine_reversed"].drop(columns="model").round(1).to_string(index=False))
+    if "retrain" in frames:
+        print("\nRetrained adapters beside a reference run of the same model")
+        shown = frames["retrain"][frames["retrain"]["subset"] == "all items"]
+        print(shown.drop(columns=["model", "subset"]).round(3).to_string(index=False))
+    if "retrain_validation_reference" in frames:
+        print("\nLoss of predictors that need no model")
+        print(
+            frames["retrain_validation_reference"]
+            .pivot_table(index="predictor", columns="split", values="loss", sort=False)
+            .round(4)
+            .to_string()
+        )
     print(f"\nwrote {len(frames)} tables to {TABLES_DIR}")
 
 

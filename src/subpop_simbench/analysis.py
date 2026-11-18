@@ -23,6 +23,25 @@ MODEL_PAIRS = {
     "llama-3-70b": ("llama-3-70b", "Llama-3-70B"),
 }
 
+# Adapters trained here with scripts/train_adapter.py, to set beside the released one.
+#   training_tag  the training run, under data/adapters/
+#   runs          SimBench runs of its checkpoints under results/, named by the checkpoint
+#   measured_validation_loss
+#                 loss on this repo's validation questions from
+#                 `train_adapter.py --eval-only` (one A40 run each, 17 November 2026). The
+#                 analysis cannot recompute these: they need the model.
+RETRAINED = {
+    "mistral-7b": {
+        "training_tag": "mistral-7b-v0.1__retrain",
+        "runs": {
+            "best validation loss": "mistral-7b-v0.1__retrain-best",
+            "final epoch": "mistral-7b-v0.1__retrain-last",
+        },
+        "measured_validation_loss": {"base model": 0.3190, "released adapter": 0.0341},
+    },
+}
+RELEASED = "released adapter"
+
 # SimBench datasets that are attitude surveys of the general public, like SubPOP's training
 # data. Everything else is psychometric scales, judgement tasks and decision tasks.
 OTHER_OPINION_SURVEYS = frozenset(
@@ -234,12 +253,52 @@ class Pair:
         return scores_at(self.pred_adapter, self.human, self.norm)
 
 
-def load_pairs(items: pd.DataFrame, results_dir: Path, stem: str) -> dict[str, Pair] | None:
+def tvd(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Total variation distance between matching rows of two (n, options) arrays."""
+    return 0.5 * np.abs(a - b).sum(axis=1)
+
+
+def compare_to_reference(
+    score: np.ndarray,
+    pred: np.ndarray,
+    reference_score: np.ndarray,
+    reference_pred: np.ndarray,
+    base_pred: np.ndarray,
+) -> dict:
+    """One run beside a reference run of the same base model, on the same items in order.
+
+    `difference` is the run's mean score minus the reference's, with a paired-bootstrap 95%
+    interval. The rest says whether the run predicts like the reference item by item: its
+    mean total variation distance to the reference's predictions and to the base model's,
+    and the share of items on which it is nearer the reference than the base model.
+    """
+    difference = score - reference_score
+    low, high = bootstrap_ci(difference)
+    to_reference, to_base = tvd(pred, reference_pred), tvd(pred, base_pred)
+    return {
+        "score": score.mean(),
+        "reference_score": reference_score.mean(),
+        "difference": difference.mean(),
+        "ci_low": low,
+        "ci_high": high,
+        "tvd_to_reference": to_reference.mean(),
+        "tvd_to_base": to_base.mean(),
+        "share_closer_to_reference": (to_reference < to_base).mean(),
+    }
+
+
+def load_pairs(
+    items: pd.DataFrame, results_dir: Path, stem: str, adapter_tag: str | None = None
+) -> dict[str, Pair] | None:
     """Pairs per condition for one model, or None unless both runs are complete on disk.
 
-    `items` must come from `prepare_items`.
+    The adapter run is `<stem>__subpop`, the released adapter, unless `adapter_tag` names
+    another run of the same base model. `items` must come from `prepare_items`.
     """
-    dirs = {kind: Path(results_dir) / f"{stem}__{kind}" for kind in ("base", "subpop")}
+    dirs = {
+        "base": Path(results_dir) / f"{stem}__base",
+        "subpop": Path(results_dir) / (adapter_tag or f"{stem}__subpop"),
+    }
     if not all((d / "predictions.parquet").exists() for d in dirs.values()):
         return None
     runs = {kind: load_run(d) for kind, d in dirs.items()}

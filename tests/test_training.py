@@ -4,6 +4,7 @@ a tiny randomly-initialised model."""
 import json
 from dataclasses import replace
 
+import numpy as np
 import pandas as pd
 import pytest
 import torch
@@ -25,7 +26,13 @@ from subpop_simbench.train import (
     tokenize_for_training,
     train,
 )
-from subpop_simbench.train_data import build_examples, split_questions
+from subpop_simbench.train_data import (
+    REFERENCE_PREDICTORS,
+    build_examples,
+    loss_of,
+    reference_losses,
+    split_questions,
+)
 
 PROMPT = "Question: Is the sky blue?\nA. Yes\nB. No\nAnswer as a choice between A.,B.\n\nAnswer:"
 
@@ -110,6 +117,53 @@ def test_question_split_is_stable_and_sized():
     assert sum(value == "val" for value in split.values()) == 5
     assert split == split_questions(reversed(qkeys))
     assert split != split_questions(qkeys, seed=1)
+
+
+def test_loss_of_stated_probabilities_matches_the_model_loss():
+    torch.manual_seed(1)
+    logits = torch.randn(6, 10)
+    target = torch.rand(6, 10)
+    target[:, 3:] = 0
+    target *= 1.2 / target.sum(dim=-1, keepdim=True)
+    stated = loss_of(torch.softmax(logits, dim=-1).numpy(), target.numpy())
+    from_model = distribution_loss(logits, list(range(10)), target).numpy()
+    assert stated == pytest.approx(from_model, abs=1e-5)
+
+
+def test_reference_losses_order_the_predictors_by_what_they_know():
+    def example(qkey, group, split, target):
+        return {"qkey": qkey, "group": group, "split": split, "target": target, "n_options": 3}
+
+    examples = pd.DataFrame(
+        [
+            example("q1", "old", "train", [0.7, 0.2, 0.1]),
+            example("q1", "young", "train", [0.5, 0.4, 0.1]),
+            example("q2", "old", "train", [0.2, 0.7, 0.2]),  # sums to 1.1
+            example("q3", "old", "val", [0.1, 0.1, 0.8]),
+            example("q3", "young", "val", [0.3, 0.1, 0.6]),
+        ]
+    )
+    table = reference_losses(examples)
+    assert set(table["predictor"]) == set(REFERENCE_PREDICTORS)
+    loss = table.set_index(["predictor", "split"])["loss"]
+
+    # Two of the three training targets sum to one, so their floor is zero; the third's is
+    # S * ln(S) with S = 1.1.
+    assert loss["lowest possible", "train"] == pytest.approx(1.1 * np.log(1.1) / 3, abs=1e-6)
+    assert loss["lowest possible", "val"] == pytest.approx(0.0, abs=1e-6)
+    for split in ("train", "val"):
+        floor, question = loss["lowest possible", split], loss["question average", split]
+        assert floor < question
+    # Knowing the held-out question's own answers beats knowing only the training questions'.
+    assert loss["question average", "val"] < loss["same option count", "val"]
+    # The option-count shape comes from the training split alone: (0.7+0.5+0.2, ...) / 3.1.
+    shape = np.array([1.4, 1.3, 0.4]) / 3.1
+    held_out = np.array([[0.1, 0.1, 0.8], [0.3, 0.1, 0.6]])
+    expected = (held_out * np.log((held_out + 1e-8) / (shape + 1e-8))).sum(axis=1).mean()
+    assert loss["same option count", "val"] == pytest.approx(expected, abs=1e-6)
+    assert loss["uniform", "val"] == pytest.approx(
+        (held_out * np.log((held_out + 1e-8) * 3)).sum(axis=1).mean(), abs=1e-6
+    )
 
 
 def test_label_tokens_are_the_spaced_letters(llama2_tokenizer):

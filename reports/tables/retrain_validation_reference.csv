@@ -1,0 +1,9 @@
+predictor,description,split,n_examples,loss
+lowest possible,"the target itself, renormalised to sum to one",train,63920,0.0116
+lowest possible,"the target itself, renormalised to sum to one",val,7106,0.0125
+question average,"the question's average target over all its subgroups: knows how the question was answered, not by whom",train,63920,0.052
+question average,"the question's average target over all its subgroups: knows how the question was answered, not by whom",val,7106,0.0572
+same option count,the average target of training questions with as many options: never reads the question,train,63920,0.216
+same option count,the average target of training questions with as many options: never reads the question,val,7106,0.2256
+uniform,equal weight on each of the question's options,train,63920,0.466
+uniform,equal weight on each of the question's options,val,7106,0.4656

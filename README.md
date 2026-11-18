@@ -44,6 +44,10 @@ An interactive version of every table in this section, with all 25 datasets, is 
 [`reports/figures/subpop_on_simbench.html`](reports/figures/subpop_on_simbench.html), and
 the numbers behind it are in [`reports/tables/`](reports/tables/).
 
+The Mistral-7B result can be reproduced from SubPOP's data: an adapter retrained here
+scores within 2.2 points of the released one in every format
+([Retraining the Mistral-7B adapter](#retraining-the-mistral-7b-adapter)).
+
 ### Where the gain comes from
 
 SimBench's own format, base → with adapter:
@@ -311,7 +315,8 @@ A run is about 28,000 prompts and 4 million tokens, one forward pass each. It wr
 `results/<tag>/` and is resumable: repeat the command after an interruption. Add
 `--limit N` to run a seeded sample of N items. Base and adapter runs of one model must be
 tagged `<stem>__base` and `<stem>__subpop`; the stems the analysis looks for are in
-`MODEL_PAIRS` in `src/subpop_simbench/analysis.py`.
+`MODEL_PAIRS` in `src/subpop_simbench/analysis.py`. Runs of an adapter trained here are
+listed in `RETRAINED` in the same file.
 
 Then the analysis:
 
@@ -323,18 +328,17 @@ uv run python scripts/make_figures.py       # reports/figures/subpop_on_simbench
 ```
 
 Without the two optional steps, `analyze.py` skips the overlap tables and everything else
-still runs.
+still runs. Two of the retraining tables need files under `data/` that are not committed
+(the training run and the training examples); without them `analyze.py` leaves the
+committed copies as they are.
 
 ## Training an adapter
 
-**Status: no full training run yet, so nothing in the Results section depends on this
-code.** A 200-step trial on Mistral-7B ran cleanly on an A40. It cut the loss on the
-validation questions from 0.319 (base model) to 0.093; SubPOP's released adapter scores
-0.034 there, though it has probably trained on most of those questions.
-
 SubPOP's released adapters fit only their four base models. To try another base model, the
-repo can train an adapter with SubPOP's recipe. Its first job is to retrain the Mistral-7B
-adapter and check the result against the released one.
+repo can train an adapter with SubPOP's recipe. As a check on the trainer, it was first
+used to retrain the Mistral-7B adapter, which scores within 2.2 points of the released one
+in every prompt format ([results below](#retraining-the-mistral-7b-adapter)). The rest of
+the Results section does not depend on this code.
 
 ```bash
 uv run python scripts/fetch_subpop.py              # gated dataset, needs a Hugging Face token
@@ -366,11 +370,86 @@ The full list of what is copied and what differs is at the top of
 `src/subpop_simbench/train.py`. Training examples and trained adapters derive from the
 gated SubPOP data and are not committed.
 
+### Retraining the Mistral-7B adapter
+
+One run of 20 epochs with seed 0, on the same base revision as the released adapter's
+runs. Two checkpoints were scored on SimBench: epoch 7, which had the lowest validation
+loss, and epoch 20, the last. Brackets are the difference from the released adapter.
+
+| Prompt format | Items | Base | Released adapter | Retrained, epoch 7 | Retrained, epoch 20 |
+|---|---|---|---|---|---|
+| SimBench's format | 13,510 | 7.5 | 22.9 | 23.2 (+0.2) | 22.6 (−0.3) |
+| SubPOP's layout | 13,510 | 9.4 | 22.8 | 21.3 (−1.4) | 20.6 (−2.2) |
+| SubPOP's exact format | 964 | 28.4 | 76.6 | 76.5 (−0.1) | 78.1 (+1.4) |
+
+Paired-bootstrap 95% intervals on the differences are about ±0.3 points in the first two
+rows and ±0.6 in the third.
+
+Three tests were set before the run, and both checkpoints pass all of them:
+
+- **Within 2 points of the released adapter on SubPOP's exact format.** The differences
+  are −0.1 and +1.4.
+- **Within 3 points on both full-benchmark formats.** The largest difference is −2.2.
+- **Item by item, nearer the released adapter than the base model.** That holds on 85% to
+  89% of items in the full-benchmark formats and 99.8% in SubPOP's exact format. The
+  average total variation distance to the released adapter's predictions is 0.03 to 0.08,
+  against 0.17 to 0.24 to the base model's.
+
+The retrained adapter is close to the released one, not identical:
+
+- **It is lower in SubPOP's layout.** The differences of −1.4 and −2.2 are well outside
+  their intervals.
+- **The match in SimBench's format hides offsetting differences.** Epoch 7 is 4.8 points
+  below the released adapter on OpinionQA (59.9 against 64.7) and 1.6 above it on the other
+  opinion surveys (22.1 against 20.5).
+- **More epochs trade transfer for fit.** Epoch 20 scores 1.5 points higher than epoch 7 on
+  SubPOP's exact format and 0.5 and 0.7 lower on the two full-benchmark formats. All three
+  differences are outside their intervals.
+- **One seed.** Run-to-run variation was not measured. Differences of this size could come
+  from the seed, from the three settings SubPOP does not record, or from library versions.
+
+**Validation loss** is SubPOP's training loss on the 323 held-out questions (7,106
+prompts). It was lowest at epoch 7 and then drifted up, while the loss on the training
+questions fell from 0.103 in the first epoch to 0.021 in the last. For scale, with
+predictors that need no model:
+
+| Predictor | Loss on the validation questions |
+|---|---|
+| Lowest possible | 0.0125 |
+| SubPOP's released adapter | 0.0341 |
+| Each question's own average answer, the same for every subgroup | 0.0572 |
+| Retrained adapter, epoch 7 | 0.0761 |
+| Retrained adapter, epoch 20 | 0.0796 |
+| The average answer of training questions with as many options | 0.2256 |
+| Base Mistral-7B | 0.3190 |
+| Equal weight on each option | 0.4656 |
+
+- **The floor is not zero.** Targets sum to more than one, and a predicted distribution
+  cannot.
+- **The released adapter's 0.034 is not a held-out figure.** It is below 0.057, which is
+  built from the real answers to each validation question. SubPOP held out its own tenth of
+  the questions, with a seed it does not publish, so the released adapter has probably
+  trained on about nine in ten of the questions held out here.
+- **Lower validation loss did not mean a better score.** Epoch 7 has the lower validation
+  loss, yet epoch 20 scores 1.5 points higher on SubPOP's exact format, the SimBench
+  condition closest to the validation data, and 2.2 higher on its 344 items with no
+  matching training question. From epoch 3 on, validation loss stays between 0.076 and
+  0.080, so keeping the checkpoint with the lowest validation loss, as SubPOP's code does,
+  picks between near-ties.
+
+The numbers are in `reports/tables/retrain.csv`, `retrain_epochs.csv` and
+`retrain_validation_reference.csv`, and the last section of the
+[results page](https://stevenfazzio.com/subpop-simbench/) charts them. The losses of the
+base model and the released adapter were measured with `train_adapter.py --eval-only` and
+are recorded in `RETRAINED` in `src/subpop_simbench/analysis.py`.
+
 ### Long runs on a rented pod
 
-On an A40, Mistral-7B trains at about 2,250 tokens a second: 1.2 hours an epoch, using
-41 GB of GPU memory at `--micro-batch-size 16`. Twenty epochs is about a day, longer than
-the session that starts it, and a pod bills until someone stops it.
+On an A40, Mistral-7B trains at about 2,240 tokens a second: 76 minutes an epoch with its
+validation pass, using 41 GB of GPU memory at `--micro-batch-size 16`. The 20-epoch run
+took 25 hours and about $15 of pod time at $0.59 an hour, including scoring both
+checkpoints. That is longer than the session that starts it, and a pod bills until someone
+stops it.
 `scripts/run_then_stop_pod.sh` runs a job, writes its output to a log as it is produced,
 and stops the pod when the job ends, whether it finished, failed or hit its deadline:
 
@@ -385,9 +464,12 @@ scripts/run_then_stop_pod.sh --max-hours 30 --log /workspace/train.log -- \
 - **A stopped pod is not free and not always reachable.** It bills a little for the volume
   disk, and it can only be started again when its host has a free GPU. Copy results off
   while the pod runs when possible, and terminate it once they are copied.
-- **Not yet tried on a real pod.** The wrapper is tested against a stand-in for
-  `runpodctl`. Run it once with a trivial job (`-- true`) on a fresh pod before trusting it
-  with a long one; `--check` reports whether it can find `runpodctl` and the pod's id.
+- **Used once for real.** The wrapper ran the 25-hour Mistral-7B job and the pod stopped
+  itself afterwards. It asks RunPod's REST API to stop the pod, using the pod's own key,
+  and falls back to `runpodctl`. Which of the two did it was not recorded: the wrapper's
+  last log lines were written after the final copy off the pod.
+- **Check before a long job.** `--check` reports whether the wrapper can find the pod's id
+  and a way to stop it. Run that on a fresh pod first.
 
 ## Runs
 
@@ -404,6 +486,13 @@ model and adapter revisions, library versions and timings are in each run's
 
 Llama-2-13B does not fit a 48 GB card at `--max-batch-tokens 24576`; the default of 8,192
 does.
+
+The retrained Mistral-7B adapter's two runs, `mistral-7b-v0.1__retrain-best` and
+`mistral-7b-v0.1__retrain-last`, used the same base revision on an A40 and took 12 minutes
+each. Their adapter is a local training checkpoint, so `meta.json` records its path
+(`epochs/epoch-007` and `epochs/epoch-020`), not a published revision. Training and
+scoring ran the code of commit `6671296`; the pod's copy also held a then-uncommitted
+change to the stop wrapper, which is why `meta.json` marks it dirty.
 
 ## Checks
 
