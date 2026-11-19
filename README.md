@@ -48,6 +48,12 @@ The Mistral-7B result can be reproduced from SubPOP's data: an adapter retrained
 scores within 2.2 points of the released one in every format
 ([Retraining the Mistral-7B adapter](#retraining-the-mistral-7b-adapter)).
 
+The same trainer was then used on a base model SubPOP released no adapter for: OLMo-2 32B,
+the best base model on SimBench's leaderboard. The adapter raises it from 16.7 to 25.2 in
+SimBench's format. That is the smallest gain of the five models in that format, and 9.4
+points short of Llama-3-70B + SubPOP
+([A newer base model: OLMo-2 32B](#a-newer-base-model-olmo-2-32b)).
+
 ### Where the gain comes from
 
 SimBench's own format, base → with adapter:
@@ -146,6 +152,7 @@ From the SimBench paper's leaderboard, all in SimBench's own format:
 | GPT-4.1 | 34.55 |
 | DeepSeek-R1 | 34.52 |
 | Llama-3.1-405B-Instruct | 28.40 |
+| **OLMo-2 32B + adapter trained here** | **25.2** |
 | Qwen2.5-32B-Instruct | 23.76 |
 | **Mistral-7B + SubPOP** | **22.9** |
 | **Llama-2-13B + SubPOP** | **20.6** |
@@ -167,6 +174,9 @@ This comparison is indicative, not like for like:
   overall score.
 - The base models differ: Llama-3-70B here, Llama-3.1-70B there. Ours scores 4.0 against
   their 1.21.
+- OLMo-2-0325-32B is the same base model in both. It scores 16.7 here against their 15.90.
+  Its adapter was trained here, not released by SubPOP
+  ([below](#a-newer-base-model-olmo-2-32b)).
 - SimBench's human answers for MoralMachine look reversed
   ([below](#moralmachine-answers-look-reversed)). Correcting them would barely move the
   scores here, and may raise the published scores of stronger models by more.
@@ -315,8 +325,8 @@ A run is about 28,000 prompts and 4 million tokens, one forward pass each. It wr
 `results/<tag>/` and is resumable: repeat the command after an interruption. Add
 `--limit N` to run a seeded sample of N items. Base and adapter runs of one model must be
 tagged `<stem>__base` and `<stem>__subpop`; the stems the analysis looks for are in
-`MODEL_PAIRS` in `src/subpop_simbench/analysis.py`. Runs of an adapter trained here are
-listed in `RETRAINED` in the same file.
+`MODEL_PAIRS` in `src/subpop_simbench/analysis.py`. Runs of adapters trained here are
+listed in `RETRAINED` and `TRAINED_HERE` in the same file.
 
 Then the analysis:
 
@@ -328,17 +338,18 @@ uv run python scripts/make_figures.py       # reports/figures/subpop_on_simbench
 ```
 
 Without the two optional steps, `analyze.py` skips the overlap tables and everything else
-still runs. Two of the retraining tables need files under `data/` that are not committed
-(the training run and the training examples); without them `analyze.py` leaves the
-committed copies as they are.
+still runs. Two of the retraining tables and `trained_here/epochs.csv` need files under
+`data/` that are not committed (the training runs and the training examples); without them
+`analyze.py` leaves the committed copies as they are.
 
 ## Training an adapter
 
 SubPOP's released adapters fit only their four base models. To try another base model, the
 repo can train an adapter with SubPOP's recipe. As a check on the trainer, it was first
 used to retrain the Mistral-7B adapter, which scores within 2.2 points of the released one
-in every prompt format ([results below](#retraining-the-mistral-7b-adapter)). The rest of
-the Results section does not depend on this code.
+in every prompt format ([results below](#retraining-the-mistral-7b-adapter)). It was then
+used on OLMo-2 32B ([results below](#a-newer-base-model-olmo-2-32b)). Apart from the
+OLMo-2 32B figures, the Results section does not depend on this code.
 
 ```bash
 uv run python scripts/fetch_subpop.py              # gated dataset, needs a Hugging Face token
@@ -443,6 +454,93 @@ The numbers are in `reports/tables/retrain.csv`, `retrain_epochs.csv` and
 base model and the released adapter were measured with `train_adapter.py --eval-only` and
 are recorded in `RETRAINED` in `src/subpop_simbench/analysis.py`.
 
+### A newer base model: OLMo-2 32B
+
+[`allenai/OLMo-2-0325-32B`](https://huggingface.co/allenai/OLMo-2-0325-32B) is the best
+base model on SimBench's leaderboard, and SubPOP released no adapter for it. One was
+trained here to see where a stronger base model lands with the same recipe and data:
+
+```bash
+uv run python scripts/train_adapter.py --tag olmo-2-32b__train-lr5e-5 \
+    --base allenai/OLMo-2-0325-32B \
+    --base-revision cc9d3cf9c7230b86ee6b84607b37db1c01e3f1ed \
+    --dtype bfloat16 --tokenization default --epochs 10 --lr 5e-5 --micro-batch-size 4
+```
+
+One run with seed 0. Two settings differ from the Mistral-7B run: 10 epochs, not 20, and a
+learning rate of 5e-5, not 2e-4. SubPOP's paper gives 2e-4 for its 7B models, 1e-4 for 13B
+and 2e-5 for 70B; 5e-5 was picked between the last two and nothing was tuned.
+`--tokenization default` uses OLMo's tokenizer as it is, which adds no start token.
+
+Two checkpoints were scored on SimBench: epoch 6, which had the lowest validation loss, and
+epoch 10, the last. The table is for epoch 6. Scores are base → with adapter, and brackets
+are OLMo-2 32B with its adapter minus the model in that column, on the same items.
+
+| Prompt format | Items | OLMo-2 32B | Gain (95% interval) | Llama-3-70B + SubPOP | Mistral-7B + SubPOP |
+|---|---|---|---|---|---|
+| SimBench's format | 13,510 | 16.7 → 25.2 | +8.5 (7.9 to 9.1) | 34.6 (−9.4) | 22.9 (+2.2) |
+| SubPOP's layout | 13,510 | 7.8 → 19.2 | +11.4 (10.7 to 12.0) | 30.7 (−11.5) | 22.8 (−3.6) |
+| SubPOP's exact format | 964 | 45.7 → 76.5 | +30.8 (28.5 to 33.1) | 79.3 (−2.9) | 76.6 (−0.2) |
+
+Paired-bootstrap 95% intervals on the bracketed differences are about ±0.8 points in the
+first two rows and ±1 in the third. Epoch 10 scores 25.3, 18.9 and 76.6.
+
+- **The stronger base model ends lower.** OLMo-2 32B starts at 16.7 in SimBench's format,
+  where Llama-3-70B starts at 4.0, and finishes 9.4 points behind it. Its gain of 8.5 is the
+  smallest of the five models in that format.
+- **On SubPOP's own format it is level with the released adapters.** It scores 76.5 where
+  the four released adapters score 75.9 to 79.3.
+- **It lands near Mistral-7B + SubPOP,** 2.2 points above it in SimBench's format and 3.6
+  below it in SubPOP's layout.
+
+Where the distance to Llama-3-70B + SubPOP comes from, in SimBench's format, base → with
+adapter:
+
+| Items | n | OLMo-2 32B | Llama-3-70B | Mistral-7B | Never reads the question |
+|---|---|---|---|---|---|
+| OpinionQA | 1,484 | 44.8 → 65.5 | 37.3 → 68.2 | 31.6 → 64.7 | 56.6 |
+| Other opinion surveys | 8,344 | 13.3 → 20.8 | −0.7 → 32.0 | 7.7 → 20.5 | 12.8 |
+| Non-survey tasks | 3,682 | 13.0 → 18.8 | 1.2 → 26.9 | −2.5 → 11.7 | 19.4 |
+| No matching training question | 12,564 | 14.7 → 22.5 | 1.5 → 32.4 | 5.8 → 20.6 | 16.7 |
+
+- **The shortfall is outside OpinionQA.** There the adapter is 2.7 points behind
+  Llama-3-70B's. On the other opinion surveys it is 11.1 behind and on non-survey tasks 8.1.
+- **ESS is 3.9 of the 9.4 points.** On its 2,143 items the adapter takes OLMo-2 32B from
+  10.1 to 16.8, where Llama-3-70B's takes its base from −8.6 to 41.6.
+- **Five of the 20 datasets score lower with the adapter:** Choices13k (−2.3 to −22.7),
+  OSPsychMACH (−1.1 to −41.5), OSPsychRWAS, ConspiracyCorr and ChaosNLI. The first three
+  also fall for several of the released adapters. In SubPOP's layout nine datasets fall,
+  and the non-survey tasks as a whole go from 4.1 to 2.6.
+- **Part of the distance is letter usage.** With the generic correction described
+  [above](#how-much-is-answer-shape-and-calibration) applied to base and adapter alike,
+  OLMo-2 32B goes from 23.2 to 29.7 in SimBench's format and from 22.0 to 30.6 in SubPOP's
+  layout. Llama-3-70B + SubPOP is at 35.6 and 33.6 on that footing, so the distances shrink
+  from 9.4 to 5.9 points and from 11.5 to 2.9. That correction is fitted with knowledge of
+  the test set, so it locates the distance and is not a score to quote.
+- **The adapter adds less than the released ones do.** On that footing it is 6.5 and 8.7
+  points above its base model, against 10 to 16 for the four released adapters.
+
+**Validation loss** fell from 0.2905 for the base model to 0.0766 at epoch 6, and stayed
+between 0.0766 and 0.0778 from epoch 3 on, while the loss on the training questions fell
+from 0.132 to 0.033. That is where the retrained Mistral-7B levelled off too: its lowest
+was 0.0761. A model more than four times the size fitted the held-out questions no better,
+and neither gets below the 0.0572 that comes from knowing each question's average answer.
+
+What this run does not show:
+
+- **Whether the base model or the settings set the result.** It is one run with one seed,
+  an untuned learning rate and half as many epochs as the Mistral-7B run. SubPOP trained
+  its Llama-3-70B adapter itself, at 2e-5. The distance to it could come from the base
+  model, from these settings, or from both.
+- **How much the seed moves it.** Run-to-run variation was not measured.
+
+The numbers are in `reports/tables/trained_here/`, which repeats the main tables for this
+adapter and adds `vs_released.csv` and `epochs.csv`. The
+[results page](https://stevenfazzio.com/subpop-simbench/) has a section for it and shows it
+in the first chart. The base model's validation loss was measured with
+`train_adapter.py --eval-only` and is recorded in `TRAINED_HERE` in
+`src/subpop_simbench/analysis.py`.
+
 ### Long runs on a rented pod
 
 On an A40, Mistral-7B trains at about 2,240 tokens a second: 76 minutes an epoch with its
@@ -450,6 +548,13 @@ validation pass, using 41 GB of GPU memory at `--micro-batch-size 16`. The 20-ep
 took 25 hours and about $15 of pod time at $0.59 an hour, including scoring both
 checkpoints. That is longer than the session that starts it, and a pod bills until someone
 stops it.
+
+OLMo-2 32B needs a larger card. On an RTX PRO 6000 Blackwell with 96 GB it trains at about
+1,930 tokens a second, 77 minutes an epoch with its validation pass, at
+`--micro-batch-size 4`, which peaked at 79 GB of GPU memory in a short test beforehand. The
+10-epoch run took 13.6 hours and $37 of pod time at $2.69 an hour, including the 129 GB
+model download and three SimBench scoring runs.
+
 `scripts/run_then_stop_pod.sh` runs a job, writes its output to a log as it is produced,
 and stops the pod when the job ends, whether it finished, failed or hit its deadline:
 
@@ -464,10 +569,12 @@ scripts/run_then_stop_pod.sh --max-hours 30 --log /workspace/train.log -- \
 - **A stopped pod is not free and not always reachable.** It bills a little for the volume
   disk, and it can only be started again when its host has a free GPU. Copy results off
   while the pod runs when possible, and terminate it once they are copied.
-- **Used once for real.** The wrapper ran the 25-hour Mistral-7B job and the pod stopped
-  itself afterwards. It asks RunPod's REST API to stop the pod, using the pod's own key,
-  and falls back to `runpodctl`. Which of the two did it was not recorded: the wrapper's
-  last log lines were written after the final copy off the pod.
+- **Used twice for real.** The wrapper ran the 25-hour Mistral-7B job and the 13-hour
+  OLMo-2 32B job, and each pod stopped itself afterwards. It asks RunPod's REST API to stop
+  the pod, using the pod's own key, and falls back to `runpodctl`. Neither long run
+  recorded which of the two did it: the wrapper's last log lines were written after the
+  final copy off the pod. A 22-minute test run under the wrapper did, and there the REST
+  request was answered with HTTP 200.
 - **Check before a long job.** `--check` reports whether the wrapper can find the pod's id
   and a way to stop it. Run that on a fresh pod first.
 
@@ -483,6 +590,7 @@ model and adapter revisions, library versions and timings are in each run's
 | Llama-2-7B | `meta-llama/Llama-2-7b-hf` @ `01c7f73d` | `jjssuh/llama-2-7b-subpop` @ `d19b311a` | A40 | 11 to 12 min |
 | Llama-2-13B | `meta-llama/Llama-2-13b-hf` @ `5c31dfb6` | `jjssuh/llama-2-13b-subpop` @ `800d3776` | A40 | 20 to 21 min |
 | Llama-3-70B | `meta-llama/Meta-Llama-3-70B` @ `c8249487` | `jjssuh/llama-3-70b-subpop` @ `64bb23ff` | B200 | 8 to 9 min |
+| OLMo-2 32B | `allenai/OLMo-2-0325-32B` @ `cc9d3cf9` | trained here | RTX PRO 6000 Blackwell | 12 to 13 min |
 
 Llama-2-13B does not fit a 48 GB card at `--max-batch-tokens 24576`; the default of 8,192
 does.
@@ -493,6 +601,12 @@ each. Their adapter is a local training checkpoint, so `meta.json` records its p
 (`epochs/epoch-007` and `epochs/epoch-020`), not a published revision. Training and
 scoring ran the code of commit `6671296`; the pod's copy also held a then-uncommitted
 change to the stop wrapper, which is why `meta.json` marks it dirty.
+
+The OLMo-2 32B runs are `olmo-2-32b__base`, `olmo-2-32b__train-lr5e-5-best` and
+`olmo-2-32b__train-lr5e-5-last`, the last two with local checkpoints `epochs/epoch-006` and
+`epochs/epoch-010`. Training and scoring ran the code of commit `0e0921a`. `meta.json` marks
+the two adapter runs dirty because the base run's results were by then untracked files in
+the pod's checkout; no tracked file had changed.
 
 ## Checks
 

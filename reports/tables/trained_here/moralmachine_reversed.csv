@@ -1,0 +1,13 @@
+model,model_name,run,epoch,condition,subset,n,base,base_reversed,adapter,adapter_reversed,gain,gain_reversed,question_blind,question_blind_reversed
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,MoralMachine,500,4.2457,-4.8934,5.2351,-6.6866,0.9894,-1.7932,3.1233,-14.6255
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,non-survey tasks,3682,12.9588,11.7178,18.8213,17.2024,5.8625,5.4846,19.3735,16.9633
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,all items,13510,16.6651,16.3269,25.1919,24.7507,8.5268,8.4238,19.4041,18.7472
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,MoralMachine,500,-11.2727,2.769,-12.3992,-1.6931,-1.1265,-4.4621,3.1233,-14.6255
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,non-survey tasks,3682,4.1239,6.0307,2.6365,4.0904,-1.4874,-1.9403,19.3735,16.9633
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,all items,13510,7.8253,8.3449,19.2158,19.6121,11.3906,11.2671,19.4041,18.7472
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,MoralMachine,500,4.2457,-4.8934,5.6042,-7.5298,1.3585,-2.6364,3.1233,-14.6255
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,non-survey tasks,3682,12.9588,11.7178,19.1851,17.4016,6.2263,5.6838,19.3735,16.9633
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,all items,13510,16.6651,16.3269,25.2801,24.794,8.615,8.4672,19.4041,18.7472
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,MoralMachine,500,-11.2727,2.769,-10.7338,-1.6394,0.5389,-4.4083,3.1233,-14.6255
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,non-survey tasks,3682,4.1239,6.0307,2.6584,3.8934,-1.4655,-2.1374,19.3735,16.9633
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,all items,13510,7.8253,8.3449,18.9146,19.2512,11.0893,10.9062,19.4041,18.7472

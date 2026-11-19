@@ -42,6 +42,28 @@ RETRAINED = {
 }
 RELEASED = "released adapter"
 
+# Base models SubPOP released no adapter for, with one trained here by
+# scripts/train_adapter.py. A pair is the run <stem>__base and one of `runs`.
+#   name          display name of the base model
+#   training_tag  the training run, under data/adapters/
+#   runs          SimBench runs of its checkpoints under results/, named by the checkpoint
+#   beside        released pairs in MODEL_PAIRS to set each checkpoint beside, item by item
+#   measured_validation_loss
+#                 as in RETRAINED (one RTX PRO 6000 run, 18 November 2026)
+TRAINED_HERE = {
+    "olmo-2-32b": {
+        "stem": "olmo-2-32b",
+        "name": "OLMo-2 32B",
+        "training_tag": "olmo-2-32b__train-lr5e-5",
+        "runs": {
+            "best validation loss": "olmo-2-32b__train-lr5e-5-best",
+            "final epoch": "olmo-2-32b__train-lr5e-5-last",
+        },
+        "beside": ("llama-3-70b", "mistral-7b"),
+        "measured_validation_loss": {"base model": 0.2905},
+    },
+}
+
 # SimBench datasets that are attitude surveys of the general public, like SubPOP's training
 # data. Everything else is psychometric scales, judgement tasks and decision tasks.
 OTHER_OPINION_SURVEYS = frozenset(
@@ -284,6 +306,23 @@ def compare_to_reference(
         "tvd_to_reference": to_reference.mean(),
         "tvd_to_base": to_base.mean(),
         "share_closer_to_reference": (to_reference < to_base).mean(),
+    }
+
+
+def compare_scores(score: np.ndarray, other_score: np.ndarray) -> dict:
+    """Two runs' per-item scores on the same items in order, which may be different models.
+
+    `difference` is the first run's mean score minus the other's, with a paired-bootstrap
+    95% interval.
+    """
+    difference = score - other_score
+    low, high = bootstrap_ci(difference)
+    return {
+        "score": score.mean(),
+        "other_score": other_score.mean(),
+        "difference": difference.mean(),
+        "ci_low": low,
+        "ci_high": high,
     }
 
 

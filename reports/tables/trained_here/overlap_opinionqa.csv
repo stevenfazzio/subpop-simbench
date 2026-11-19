@@ -1,0 +1,41 @@
+model,model_name,run,epoch,condition,split,status,n,base,adapter,gain,question_blind
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,pop,same question and options,65,42.1686,67.4751,25.3065,46.3224
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,pop,same question text only,20,46.5597,66.8867,20.327,52.2534
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,pop,similar wording,36,37.248,66.4954,29.2473,44.2797
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,pop,no match,379,36.5473,58.161,21.6137,37.8897
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,grouped,same question and options,395,52.1692,75.0466,22.8774,63.8115
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,grouped,same question text only,189,50.1069,68.9606,18.8537,64.828
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,grouped,similar wording,49,38.3438,66.6914,28.3476,74.6509
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,grouped,no match,351,44.7211,60.1967,15.4756,65.2682
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,pop,same question and options,65,28.8016,71.5072,42.7056,46.3224
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,pop,same question text only,20,26.8875,74.974,48.0865,52.2534
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,pop,similar wording,36,31.0604,72.5917,41.5313,44.2797
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,pop,no match,379,22.7167,64.6501,41.9334,37.8897
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,grouped,same question and options,395,49.2663,72.0726,22.8063,63.8115
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,grouped,same question text only,189,52.5628,75.5405,22.9777,64.828
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,grouped,similar wording,49,31.1042,79.6184,48.5142,74.6509
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,grouped,no match,351,52.1041,63.3417,11.2375,65.2682
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,grouped,same question and options,387,47.7411,81.5621,33.821,63.5799
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,grouped,same question text only,185,45.9127,77.0108,31.0981,64.5079
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,grouped,similar wording,48,39.8058,84.1002,44.2944,74.2481
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,grouped,no match,344,44.1007,69.3426,25.2419,64.9711
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,pop,same question and options,65,42.1686,67.0675,24.899,46.3224
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,pop,same question text only,20,46.5597,67.4821,20.9224,52.2534
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,pop,similar wording,36,37.248,66.8809,29.6329,44.2797
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,pop,no match,379,36.5473,58.1384,21.5911,37.8897
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,grouped,same question and options,395,52.1692,75.061,22.8917,63.8115
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,grouped,same question text only,189,50.1069,69.7017,19.5948,64.828
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,grouped,similar wording,49,38.3438,67.2924,28.9486,74.6509
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,grouped,no match,351,44.7211,60.8596,16.1385,65.2682
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,pop,same question and options,65,28.8016,70.5771,41.7756,46.3224
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,pop,same question text only,20,26.8875,75.8194,48.9319,52.2534
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,pop,similar wording,36,31.0604,71.8259,40.7655,44.2797
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,pop,no match,379,22.7167,64.6243,41.9076,37.8897
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,grouped,same question and options,395,49.2663,71.4005,22.1342,63.8115
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,grouped,same question text only,189,52.5628,76.7518,24.189,64.828
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,grouped,similar wording,49,31.1042,80.637,49.5328,74.6509
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,grouped,no match,351,52.1041,63.1079,11.0038,65.2682
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,grouped,same question and options,387,47.7411,81.4438,33.7027,63.5799
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,grouped,same question text only,185,45.9127,76.9686,31.0559,64.5079
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,grouped,similar wording,48,39.8058,86.3315,46.5256,74.2481
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,grouped,no match,344,44.1007,69.5139,25.4132,64.9711

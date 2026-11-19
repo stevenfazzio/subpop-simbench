@@ -3,12 +3,15 @@ import pandas as pd
 import pytest
 
 from subpop_simbench.analysis import (
+    MODEL_PAIRS,
     TIERS,
+    TRAINED_HERE,
     animals_versus_people,
     best_temperature,
     best_temperature_per_group,
     bootstrap_ci,
     casualties,
+    compare_scores,
     compare_to_reference,
     match_letter_usage,
     pad,
@@ -195,3 +198,28 @@ def test_a_run_compared_with_itself_differs_by_nothing():
     assert out["difference"] == 0.0 and out["ci_low"] == 0.0 and out["ci_high"] == 0.0
     assert out["tvd_to_reference"] == 0.0
     assert out["share_closer_to_reference"] == 1.0
+
+
+def test_compare_scores_reports_the_paired_difference_between_two_runs():
+    other = np.array([10.0, 20.0, 30.0, 40.0])
+    out = compare_scores(other + np.array([1.0, 1.0, 1.0, -7.0]), other)
+    assert out["score"] == pytest.approx(24.0)
+    assert out["other_score"] == pytest.approx(25.0)
+    assert out["difference"] == pytest.approx(-1.0)
+    assert out["ci_low"] <= out["difference"] <= out["ci_high"]
+
+
+def test_a_constant_gap_between_two_runs_has_no_interval():
+    other = np.random.default_rng(0).normal(size=50)
+    out = compare_scores(other + 2.5, other)
+    assert out["difference"] == pytest.approx(2.5)
+    assert out["ci_low"] == pytest.approx(2.5) and out["ci_high"] == pytest.approx(2.5)
+
+
+def test_adapters_trained_here_name_their_runs_and_released_pairs_to_sit_beside():
+    for spec in TRAINED_HERE.values():
+        # The first run listed is the one the page and the tables treat as the result.
+        assert next(iter(spec["runs"])) == "best validation loss"
+        assert all(tag.startswith(spec["stem"] + "__") for tag in spec["runs"].values())
+        assert set(spec["beside"]) <= set(MODEL_PAIRS)
+        assert "base model" in spec["measured_validation_loss"]

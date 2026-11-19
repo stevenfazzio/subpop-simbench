@@ -1,0 +1,11 @@
+model,model_name,epoch,train_loss,val_loss,lowest_val_loss,train_minutes
+olmo-2-32b,OLMo-2 32B,1,0.132,0.0904,False,73.0383
+olmo-2-32b,OLMo-2 32B,2,0.0544,0.0804,False,72.77
+olmo-2-32b,OLMo-2 32B,3,0.0433,0.0772,False,72.97
+olmo-2-32b,OLMo-2 32B,4,0.0393,0.0778,False,72.9083
+olmo-2-32b,OLMo-2 32B,5,0.037,0.0775,False,73.0033
+olmo-2-32b,OLMo-2 32B,6,0.0356,0.0766,True,72.4333
+olmo-2-32b,OLMo-2 32B,7,0.0345,0.0768,False,73.0283
+olmo-2-32b,OLMo-2 32B,8,0.0338,0.0768,False,73.28
+olmo-2-32b,OLMo-2 32B,9,0.0333,0.077,False,73.28
+olmo-2-32b,OLMo-2 32B,10,0.033,0.077,False,72.6717

@@ -7,9 +7,11 @@ dumbbells running from a base model's SimBench score to its score with the SubPO
 next to what a predictor that never reads the question scores. A selector at the top
 switches all four between the two prompt formats that cover the whole benchmark.
 
-A last section, drawn when reports/tables/retrain.csv exists, sets the adapter retrained
-here beside the released one under all three prompt formats, and shows its training and
-validation loss per epoch.
+Two more sections follow when their tables exist. One, from reports/tables/trained_here/,
+is for an adapter trained here on a base model SubPOP released none for: its scores beside
+released adapters under all three prompt formats and by kind of dataset, and its loss per
+epoch. Its best checkpoint also joins the first chart. The other, from
+reports/tables/retrain.csv, sets the adapter retrained here beside the released one.
 """
 
 import html
@@ -21,7 +23,7 @@ import plotly.graph_objects as go
 from plotly.offline import get_plotlyjs_version
 from plotly.subplots import make_subplots
 
-from subpop_simbench.analysis import MODEL_PAIRS, RELEASED, RETRAINED
+from subpop_simbench.analysis import MODEL_PAIRS, RELEASED, RETRAINED, TIERS, TRAINED_HERE
 from subpop_simbench.io import FIGURES_DIR, TABLES_DIR
 
 FORMATS = {
@@ -63,7 +65,7 @@ FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif'
 LEGEND_RANK = {"base": 1, "adapter": 2, "published": 3, "blind": 4}
 SERIES = {
     "base": "Base model",
-    "adapter": "With SubPOP adapter",
+    "adapter": "With adapter",
     "published": "Published on SimBench",
     "blind": "Never reads the question",
 }
@@ -86,6 +88,32 @@ RETRAIN_SHORT = {
     "subpop_skeleton": "SubPOP's layout",
     "subpop_exact": "SubPOP's exact",
 }
+# How the checkpoints of a training run are named in the tables, and on the page.
+CHECKPOINTS = {"best validation loss": "lowest validation loss", "final epoch": "final"}
+TRAINED_DIR = TABLES_DIR / "trained_here"
+TRAINED_TABLES = (
+    "overall",
+    "by_subset",
+    "by_dataset",
+    "calibration_controls",
+    "moralmachine_reversed",
+    "vs_released",
+    "epochs",
+)
+# What the tables cannot say about each adapter trained here: why that base model, and what
+# was chosen for the run.
+TRAINED_NOTES = {
+    "olmo-2-32b": {
+        "why": "OLMo-2 32B is the strongest base model on SimBench's published leaderboard",
+        "caveat": (
+            "This is one run with one seed. Its learning rate, 5e-5, was chosen here: SubPOP "
+            "used 1e-4 for its 13B model and 2e-5 for its 70B one. Nothing was tuned, so the "
+            "distance to Llama-3-70B + SubPOP could come from the base model, from these "
+            "settings, or from both."
+        ),
+    },
+}
+SPLIT_NAMES = {"pop": "Pop", "grouped": "Grouped"}
 
 
 def _hover(title: str) -> str:
@@ -196,10 +224,15 @@ def reference_trace(rows: pd.DataFrame, kind: str, symbol: str, hover: str) -> g
 
 
 def headline_chart(
-    overall: pd.DataFrame, blind: pd.DataFrame, condition: str, rng
+    overall: pd.DataFrame, trained: pd.DataFrame, blind: pd.DataFrame, condition: str, rng
 ) -> tuple[go.Figure, pd.DataFrame]:
+    """Every model's dumbbell beside the published scores and the question-blind baselines.
+
+    `trained` holds rows like `overall`'s for adapters trained here, already labelled.
+    """
     ours = overall[overall["condition"] == condition].copy()
     ours["label"] = ours["model_name"] + " + SubPOP"
+    ours = pd.concat([ours, trained[trained["condition"] == condition]], ignore_index=True)
     table = ours[["label", "base", "adapter", "gain", "n"]].copy()
     fig = go.Figure()
     add_dumbbells(fig, ours, "", legend=True, labels=True, ticks=False)
@@ -221,9 +254,18 @@ def headline_chart(
     return style(fig, len(order), rng, left=300, order=order), table.reset_index(drop=True)
 
 
-def panel_chart(rows: pd.DataFrame, order: list[str], rng, left: int) -> go.Figure:
-    """Small multiples: one panel per model, the same rows and the same scale in each."""
-    models = [name for _, name in MODEL_PAIRS.values() if name in set(rows["model_name"])]
+def released_models(rows: pd.DataFrame) -> list[str]:
+    return [name for _, name in MODEL_PAIRS.values() if name in set(rows["model_name"])]
+
+
+def panel_chart(
+    rows: pd.DataFrame, order: list[str], rng, left: int, models: list[str] | None = None
+) -> go.Figure:
+    """Small multiples: one panel per model, the same rows and the same scale in each.
+
+    The panels are the released pairs in `rows` unless `models` names them.
+    """
+    models = models or released_models(rows)
     fig = make_subplots(
         rows=1, cols=len(models), shared_yaxes=True, subplot_titles=models,
         horizontal_spacing=0.025,
@@ -290,9 +332,11 @@ def table_html(df: pd.DataFrame, columns: dict[str, str]) -> str:
     return f"<table><thead><tr>{head}</tr></thead><tbody>{''.join(body)}</tbody></table>"
 
 
-def wide_table(rows: pd.DataFrame, order: list[str], first: str) -> str:
+def wide_table(
+    rows: pd.DataFrame, order: list[str], first: str, models: list[str] | None = None
+) -> str:
     """Rows down, models across, 'base → adapter' in each cell."""
-    models = [name for _, name in MODEL_PAIRS.values() if name in set(rows["model_name"])]
+    models = models or released_models(rows)
     head = (
         f'<th>{html.escape(first)}</th><th class="num">Items</th>'
         '<th class="num">Never reads the question</th>'
@@ -343,11 +387,10 @@ def retrain_rows(retrain: pd.DataFrame, overall: pd.DataFrame, model: str) -> pd
         shared = {"condition": condition, "n": first["n"], "base": first["base"]}
         out.append({**shared, "label": "Released adapter", "adapter": first["reference_score"]})
         for row in group.itertuples():
-            kind = "lowest validation loss" if row.run == "best validation loss" else "final"
             out.append(
                 {
                     **shared,
-                    "label": f"Retrained, epoch {row.epoch} ({kind})",
+                    "label": f"Retrained, epoch {row.epoch} ({CHECKPOINTS[row.run]})",
                     "adapter": row.score,
                     "difference": row.difference,
                     "ci_low": row.ci_low,
@@ -360,8 +403,8 @@ def retrain_rows(retrain: pd.DataFrame, overall: pd.DataFrame, model: str) -> pd
     return out
 
 
-def retrain_chart(rows: pd.DataFrame, order: list[str], rng) -> go.Figure:
-    """One panel per prompt format, the same three adapters and the same scale in each."""
+def formats_chart(rows: pd.DataFrame, order: list[str], rng) -> go.Figure:
+    """One panel per prompt format, the same adapters and the same scale in each."""
     formats = [c for c in RETRAIN_FORMATS if c in set(rows["condition"])]
     fig = make_subplots(
         rows=1, cols=len(formats), shared_yaxes=True, horizontal_spacing=0.025,
@@ -483,6 +526,259 @@ def epochs_table(epochs: pd.DataFrame) -> str:
     return f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
 
 
+def signed(value: float) -> str:
+    return f"{value:+.1f}".replace("-", "−")
+
+
+def apart(difference: float) -> str:
+    """A score difference in words: '9.4 points below'."""
+    return f"{abs(difference):.1f} points {'above' if difference > 0 else 'below'}"
+
+
+def listed(parts: list[str]) -> str:
+    return parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
+
+
+def load_trained() -> dict[str, pd.DataFrame] | None:
+    """Tables for adapters trained here, or None when they have not all been written."""
+    paths = {name: TRAINED_DIR / f"{name}.csv" for name in TRAINED_TABLES}
+    if not all(path.exists() for path in paths.values()):
+        return None
+    return {name: pd.read_csv(path) for name, path in paths.items()}
+
+
+def best_checkpoint(frame: pd.DataFrame) -> pd.DataFrame:
+    """Rows for the checkpoint with the lowest validation loss, listed first in TRAINED_HERE."""
+    first = {model: next(iter(spec["runs"])) for model, spec in TRAINED_HERE.items()}
+    return frame[frame["run"] == frame["model"].map(first)]
+
+
+def side_by_side(
+    ours: pd.DataFrame, theirs: pd.DataFrame, panel: str, beside: list[str]
+) -> pd.DataFrame:
+    """SimBench's-format rows of an adapter trained here above those of released adapters.
+
+    `model_name` becomes each one's panel title: `panel` for ours, the name and
+    "released" for theirs.
+    """
+    ours = ours[ours["condition"] == "simbench"].assign(model_name=panel)
+    theirs = theirs[(theirs["condition"] == "simbench") & theirs["model"].isin(beside)]
+    theirs = theirs.assign(model_name=theirs["model_name"] + " · released")
+    return pd.concat([ours, theirs], ignore_index=True)
+
+
+def trained_table(rows: pd.DataFrame, order: list[str], versus: pd.DataFrame, epoch: int) -> str:
+    """Formats down, adapters across as 'base → adapter', then the gaps to released adapters."""
+    others = list(dict.fromkeys(versus["beside_name"]))
+    head = '<th>Prompt format</th><th class="num">Items</th>'
+    head += "".join(f'<th class="num">{html.escape(label)}</th>' for label in order)
+    head += "".join(
+        f'<th class="num">Epoch {epoch} minus {html.escape(other)} + SubPOP (95% interval)</th>'
+        for other in others
+    )
+    indexed = rows.set_index(["condition", "label"])
+    gaps = versus.set_index(["condition", "beside_name"])
+    body = []
+    for condition in [c for c in RETRAIN_FORMATS if c in set(rows["condition"])]:
+        cells = (
+            f"<td>{html.escape(RETRAIN_FORMATS[condition])}</td>"
+            f'<td class="num">{int(indexed.loc[(condition, order[0]), "n"]):,}</td>'
+        )
+        for label in order:
+            row = indexed.loc[(condition, label)]
+            cells += f'<td class="num">{row["base"]:.1f} → {row["adapter"]:.1f}</td>'
+        for other in others:
+            gap = gaps.loc[(condition, other)]
+            cells += (
+                f'<td class="num">{gap["difference"]:+.1f} '
+                f"({gap['ci_low']:+.1f} to {gap['ci_high']:+.1f})</td>"
+            )
+        body.append(f"<tr>{cells}</tr>")
+    return f"<table><thead><tr>{head}</tr></thead><tbody>{''.join(body)}</tbody></table>"
+
+
+TRAINED_SECTION = """
+<section>
+  <h2>A newer base model: {name}</h2>
+  <p class="sub">SubPOP released adapters for four base models. {why}, so an adapter was
+  trained for it here from SubPOP's data with SubPOP's recipe, for {n_epochs} epochs. It
+  takes {name} from {base} to {adapter} in SimBench's own format, a gain of {gain}
+  (95% interval {gain_low} to {gain_high}). On the same items, the score with the adapter
+  is {versus}. Two checkpoints were scored: epoch {best_epoch}, which had the lowest loss on
+  held-out questions, and the final one. They are within {checkpoint_gap} points of each
+  other in every format. The format selector does not apply to this section: the panels
+  below are the three formats.</p>
+  {chart}
+  <p class="sub">By kind of dataset, in SimBench's own format, for epoch {best_epoch}.
+  Relative to {first} + SubPOP the adapter trained here is {tiers}. After the generic correction
+  of the second section it is {corrected_low} to {corrected_high} points above its base
+  model, against {recal_low} to {recal_high} for the released adapters, and scores
+  {corrected} in SimBench's own format against {first_corrected} for {first} + SubPOP.</p>
+  {kinds}
+  <details><summary>Show all {n_datasets} datasets as a table, largest shortfall first</summary>
+  {datasets}</details>
+  <p class="sub">Loss per epoch on the questions trained on and on those held out ({held_out};
+  lower is better). The larger rings are the two epochs scored above. The held-out loss
+  falls from {base_loss} for the base model to {lowest_loss} and stays between {level_low}
+  and {level_high} from epoch {level_from} on, while the training loss keeps
+  falling.{retrained}</p>
+  {loss}
+  <p class="sub">{caveat}</p>
+</section>
+"""
+
+
+def trained_section(
+    trained: dict[str, pd.DataFrame] | None,
+    overall: pd.DataFrame,
+    subsets: pd.DataFrame,
+    datasets: pd.DataFrame,
+    controls: pd.DataFrame,
+) -> str:
+    """A section per adapter trained here, or nothing when its tables have not been written.
+
+    `overall`, `subsets`, `datasets` and `controls` are the released adapters' tables.
+    """
+    reference_path = TABLES_DIR / "retrain_validation_reference.csv"
+    if trained is None or not reference_path.exists():
+        return ""
+    reference = pd.read_csv(reference_path)
+    validation = reference[reference["split"] == "val"].set_index("predictor")
+    retrained_epochs = TABLES_DIR / "retrain_epochs.csv"
+    corrected_gain = (
+        controls["adapter_letter_usage_matched"] - controls["base_letter_usage_matched"]
+    )
+    sections = []
+    for model, spec in TRAINED_HERE.items():
+        name = spec["name"]
+        mine = {key: frame[frame["model"] == model] for key, frame in trained.items()}
+        beside = [other for other in spec["beside"] if other in set(overall["model"])]
+        if mine["overall"].empty or mine["epochs"].empty or not beside:
+            continue
+        best = {key: best_checkpoint(frame) for key, frame in mine.items() if "run" in frame}
+        best_epoch = int(best["overall"]["epoch"].iloc[0])
+        first = MODEL_PAIRS[beside[0]][1]
+
+        # Every format: both checkpoints, then the released adapters they are set beside.
+        columns = ["condition", "n", "base", "adapter", "gain", "question_blind"]
+        ours = mine["overall"].assign(
+            label=[
+                f"{name}, epoch {row.epoch} ({CHECKPOINTS[row.run]})"
+                for row in mine["overall"].itertuples()
+            ]
+        )
+        theirs = pd.concat([overall[overall["model"] == other] for other in beside])
+        theirs = theirs.assign(label=theirs["model_name"] + " + SubPOP")
+        rows = pd.concat([ours[["label", *columns]], theirs[["label", *columns]]])
+        order = list(dict.fromkeys(rows["label"]))
+        versus = best["vs_released"][best["vs_released"]["subset"] == "all items"]
+        chart = chart_block(
+            formats_chart(rows, order, x_range(rows["base"], rows["adapter"])),
+            f"trained-{model}", trained_table(rows, order, versus, best_epoch), None, True,
+        )  # fmt: skip
+
+        # SimBench's own format, one panel per model: by kind of dataset, then by dataset.
+        panels = [f"{name} · trained here"] + [f"{MODEL_PAIRS[o][1]} · released" for o in beside]
+        kinds = side_by_side(best["by_subset"], subsets, panels[0], beside)
+        kinds = kinds[kinds["subset"].isin(SUBSET_LABELS)]
+        kinds = kinds.assign(label=kinds["subset"].map(SUBSET_LABELS))
+        kind_order = [v for k, v in SUBSET_LABELS.items() if k in set(kinds["subset"])]
+        kinds_range = x_range(kinds["base"], kinds["adapter"], kinds["question_blind"])
+        kinds_block = chart_block(
+            panel_chart(kinds, kind_order, kinds_range, left=215, models=panels),
+            f"trained-kinds-{model}", wide_table(kinds, kind_order, "Items scored", panels),
+            None, True,
+        )  # fmt: skip
+        sets = side_by_side(best["by_dataset"], datasets, panels[0], beside)
+        sets["label"] = sets["dataset_name"] + " (" + sets["split"].map(SPLIT_NAMES) + ")"
+        scores = sets.pivot(index="label", columns="model_name", values="adapter")
+        set_order = list((scores[panels[0]] - scores[panels[1]]).sort_values().index)
+
+        simbench = best["overall"].set_index("condition").loc["simbench"]
+        by_run = mine["overall"].pivot(index="condition", columns="run", values="adapter")
+        checkpoint_gap = (by_run.max(axis=1) - by_run.min(axis=1)).max()
+        gaps = versus[versus["condition"] == "simbench"]
+        tiers = best["vs_released"][
+            (best["vs_released"]["beside"] == beside[0])
+            & (best["vs_released"]["condition"] == "simbench")
+            & best["vs_released"]["subset"].isin(TIERS)
+        ]
+        mine_corrected = best["calibration_controls"].set_index("condition")
+        mine_gain = (
+            mine_corrected["adapter_letter_usage_matched"]
+            - mine_corrected["base_letter_usage_matched"]
+        )
+        first_corrected = controls[
+            (controls["model"] == beside[0]) & (controls["condition"] == "simbench")
+        ]["adapter_letter_usage_matched"].iloc[0]
+
+        epochs = mine["epochs"].sort_values("epoch")
+        lowest = epochs["val_loss"].min()
+        near = (epochs["val_loss"] <= lowest + 0.002).to_numpy()
+        # The first epoch from which the held-out loss never again leaves that band.
+        level_from = int(epochs["epoch"].to_numpy()[::-1][near[::-1].cumprod().astype(bool)].min())
+        level = epochs.loc[epochs["epoch"] >= level_from, "val_loss"]
+        retrained = ""
+        if retrained_epochs.exists():
+            other = pd.read_csv(retrained_epochs)
+            retrained = (
+                f" The retrained {html.escape(other['model_name'].iloc[0])} adapter of the next "
+                f"section levelled off at about the same loss: its lowest was "
+                f"{other['val_loss'].min():.4f}."
+            )
+        lines = {
+            "Knowing each question's average answer": validation.loc["question average", "loss"],
+            "Lowest possible": validation.loc["lowest possible", "loss"],
+        }
+        loss = chart_block(
+            loss_chart(epochs, lines), f"trained-loss-{model}", epochs_table(epochs), None, False
+        )
+        sections.append(
+            TRAINED_SECTION.format(
+                name=html.escape(name),
+                why=html.escape(TRAINED_NOTES[model]["why"]),
+                caveat=html.escape(TRAINED_NOTES[model]["caveat"]),
+                n_epochs=int(epochs["epoch"].max()),
+                best_epoch=best_epoch,
+                base=f"{simbench['base']:.1f}",
+                adapter=f"{simbench['adapter']:.1f}",
+                gain=signed(simbench["gain"]),
+                gain_low=signed(simbench["gain_ci_low"]),
+                gain_high=signed(simbench["gain_ci_high"]),
+                versus=listed(
+                    [
+                        f"{apart(row.difference)} {html.escape(row.beside_name)} + SubPOP"
+                        for row in gaps.itertuples()
+                    ]
+                ),
+                checkpoint_gap=f"{math.ceil(checkpoint_gap * 10) / 10:.1f}",
+                first=html.escape(first),
+                tiers=listed(
+                    [f"{apart(row.difference)} on {row.subset}" for row in tiers.itertuples()]
+                ),
+                corrected_low=f"{mine_gain.min():.0f}",
+                corrected_high=f"{mine_gain.max():.0f}",
+                recal_low=f"{corrected_gain.min():.0f}",
+                recal_high=f"{corrected_gain.max():.0f}",
+                corrected=f"{mine_corrected.loc['simbench', 'adapter_letter_usage_matched']:.1f}",
+                first_corrected=f"{first_corrected:.1f}",
+                chart=chart,
+                kinds=kinds_block,
+                n_datasets=len(set_order),
+                datasets=wide_table(sets, set_order, "Dataset (split)", panels),
+                held_out=f"{int(validation['n_examples'].iloc[0]):,} prompts",
+                base_loss=f"{spec['measured_validation_loss']['base model']:.4f}",
+                lowest_loss=f"{lowest:.4f}",
+                level_low=f"{level.min():.4f}",
+                level_high=f"{level.max():.4f}",
+                level_from=level_from,
+                retrained=retrained,
+                loss=loss,
+            )
+        )
+    return "\n".join(sections)
+
+
 RETRAIN_SECTION = """
 <section>
   <h2>Retraining the {name} adapter</h2>
@@ -573,9 +869,9 @@ PAGE = """<!doctype html>
 <main>
 <h1>SubPOP adapters on SimBench</h1>
 <p class="lede">Four language models, each scored on SimBench with and without its SubPOP
-adapter, on identical prompts. Every dumbbell runs from the base model's score to the score
-with the adapter. A score of 100 matches the human answer distribution; 0 is no better than
-answering uniformly; below 0 is worse than uniform.</p>
+adapter, on identical prompts.{trained_lede} Every dumbbell runs from the base model's score
+to the score with the adapter. A score of 100 matches the human answer distribution; 0 is no
+better than answering uniformly; below 0 is worse than uniform.</p>
 <p class="lede">For scale: a predictor that never reads the question, and knows only each
 dataset's typical answer shape, scores {blind_dataset}. Squares and vertical ticks mark
 that baseline.</p>
@@ -589,7 +885,7 @@ that baseline.</p>
   <h2>Overall score</h2>
   <p class="sub">All 13,510 SimBench items. Grey diamonds are scores published in the
   SimBench paper, shown for SimBench's own prompt format only. Squares are predictors that
-  never read the question.</p>
+  never read the question.{trained_note}</p>
   {headline}
 </section>
 
@@ -598,8 +894,8 @@ that baseline.</p>
   <p class="sub">Base models often favour particular option letters, which costs score for
   reasons unrelated to what they know. Here the base model and the adapter each have their
   average letter usage shifted to the human average and one temperature applied. On this
-  footing every adapter is {recal_low} to {recal_high} points above its base model. The
-  square is the question-blind score.</p>
+  footing every released adapter is {recal_low} to {recal_high} points above its base model.
+  The square is the question-blind score.</p>
   {recalibrated}
 </section>
 
@@ -620,6 +916,7 @@ that baseline.</p>
   SimBench's data (see the notes at the foot of the page).</p>
   {datasets}
 </section>
+{trained}
 {retrain}
 <footer>
 <ul>
@@ -736,7 +1033,7 @@ def retrain_section(overall: pd.DataFrame) -> str:
         name = MODEL_PAIRS[model][1]
         order = list(dict.fromkeys(rows["label"]))
         chart = chart_block(
-            retrain_chart(rows, order, x_range(rows["base"], rows["adapter"])),
+            formats_chart(rows, order, x_range(rows["base"], rows["adapter"])),
             f"retrain-{model}", retrain_table(rows, order), None, True,
         )  # fmt: skip
         validation = reference[reference["split"] == "val"].set_index("predictor")
@@ -789,7 +1086,19 @@ def main() -> None:
     controls = pd.read_csv(TABLES_DIR / "calibration_controls.csv")
     blind_all = blind[blind["subset"] == "all items"].set_index("baseline")["score"]
 
-    both = overall[overall["condition"].isin(FORMATS)]
+    # Adapters trained here: a section of their own, and their best checkpoint in the
+    # first chart. The other charts stay with the released adapters.
+    trained = load_trained()
+    trained_html = trained_section(trained, overall, subsets, datasets, controls)
+    trained_best = pd.DataFrame(columns=[*overall.columns, "label"])
+    if trained_html:
+        trained_best = best_checkpoint(trained["overall"])
+        trained_best = trained_best.assign(
+            label=trained_best["model_name"] + " + adapter trained here"
+        )
+
+    both = pd.concat([overall, trained_best])
+    both = both[both["condition"].isin(FORMATS)]
     head_range = x_range(both["base"], both["adapter"], [p[1] for p in PUBLISHED])
     corrected_gain = (
         controls["adapter_letter_usage_matched"] - controls["base_letter_usage_matched"]
@@ -804,8 +1113,7 @@ def main() -> None:
     subset_range = x_range(subsets["base"], subsets["adapter"], subsets["question_blind"])
 
     datasets = datasets[datasets["condition"].isin(FORMATS)].copy()
-    split_names = {"pop": "Pop", "grouped": "Grouped"}
-    datasets["label"] = datasets["dataset_name"] + " (" + datasets["split"].map(split_names) + ")"
+    datasets["label"] = datasets["dataset_name"] + " (" + datasets["split"].map(SPLIT_NAMES) + ")"
     # One fixed order for both formats, so switching format never reorders the rows.
     mean_gain = datasets.groupby(["split", "label"])["gain"].mean().reset_index()
     mean_gain["split_rank"] = mean_gain["split"].map({"pop": 0, "grouped": 1})
@@ -816,7 +1124,7 @@ def main() -> None:
 
     blocks = {"headline": [], "recalibrated": [], "subsets": [], "datasets": []}
     for condition in FORMATS:
-        fig, table = headline_chart(overall, blind, condition, head_range)
+        fig, table = headline_chart(overall, trained_best, blind, condition, head_range)
         columns = {
             "label": "Model or reference",
             "base": "Base",
@@ -865,6 +1173,8 @@ def main() -> None:
 
     # MoralMachine's human answers look reversed in SimBench's data: what reversing them does.
     flipped = pd.read_csv(TABLES_DIR / "moralmachine_reversed.csv")
+    if trained_html:
+        flipped = pd.concat([flipped, trained["moralmachine_reversed"]], ignore_index=True)
     flipped = flipped[flipped["condition"].isin(FORMATS)]
     everything = flipped[flipped["subset"] == "all items"]
     mm_shift = max(
@@ -878,8 +1188,13 @@ def main() -> None:
 
     exact = overall[overall["condition"] == "subpop_exact"]
     exact_text = "; ".join(
-        f"{row.model_name} {row.adapter:.1f} (base {row.base:.1f})" for row in exact.itertuples()
+        [f"{row.model_name} {row.adapter:.1f} (base {row.base:.1f})" for row in exact.itertuples()]
+        + [
+            f"{row.model_name}, trained here, {row.adapter:.1f} (base {row.base:.1f})"
+            for row in trained_best[trained_best["condition"] == "subpop_exact"].itertuples()
+        ]
     )
+    trained_names = listed(list(dict.fromkeys(trained_best["model_name"]))) if trained_html else ""
     buttons = "\n  ".join(
         f'<button type="button" data-format="{key}" aria-pressed="{str(i == 0).lower()}">'
         f"{html.escape(label)}</button>"
@@ -899,6 +1214,19 @@ def main() -> None:
         recalibrated="\n".join(blocks["recalibrated"]),
         subsets="\n".join(blocks["subsets"]),
         datasets="\n".join(blocks["datasets"]),
+        trained=trained_html,
+        trained_lede=(
+            f" {html.escape(trained_names)} has no released adapter, so one was trained for it "
+            "here: it is in the first chart and has a section of its own."
+            if trained_html
+            else ""
+        ),
+        trained_note=(
+            f" The {html.escape(trained_names)} adapter was trained here, not released by "
+            "SubPOP; the chart shows its checkpoint with the lowest validation loss."
+            if trained_html
+            else ""
+        ),
         retrain=retrain_html,
         exact=html.escape(exact_text),
         mm_animals=len(animals),

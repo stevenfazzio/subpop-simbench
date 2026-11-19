@@ -31,6 +31,15 @@ Writes CSVs to reports/tables/:
                                  and validation questions, if the training examples are on
                                  disk
 
+For adapters trained here on a base model SubPOP released none for (`TRAINED_HERE`), it
+writes the per-model tables again under reports/tables/trained_here/, with one set of rows
+per checkpoint scored, and two more:
+
+    vs_released.csv              each checkpoint beside released adapters on the same
+                                 items: score difference with a paired bootstrap interval
+    epochs.csv                   training and validation loss per epoch, if the training
+                                 run is under data/adapters/
+
 Every per-model table also carries `question_blind`: the score, on the same items, of
 predicting each dataset's typical answer shape without reading the question.
 """
@@ -49,10 +58,12 @@ from subpop_simbench.analysis import (
     RELEASED,
     RETRAINED,
     TIERS,
+    TRAINED_HERE,
     animals_versus_people,
     best_temperature,
     best_temperature_per_group,
     bootstrap_ci,
+    compare_scores,
     compare_to_reference,
     load_pairs,
     match_letter_usage,
@@ -74,6 +85,17 @@ from subpop_simbench.overlap import STATUSES
 from subpop_simbench.train_data import reference_losses
 
 NO_MATCH = "no matching training question"
+# Tables with rows for each model and prompt condition, written for released pairs and
+# again for adapters trained here.
+PER_MODEL_TABLES = (
+    "overall",
+    "by_subset",
+    "by_dataset",
+    "calibration_controls",
+    "condition_c_by_subgroup",
+    "overlap_opinionqa",
+    "moralmachine_reversed",
+)
 
 
 def _row(pair, mask, **keys) -> dict:
@@ -137,11 +159,126 @@ def _subset_masks(frame: pd.DataFrame, have_overlap: bool) -> dict[str, np.ndarr
     return {name: mask for name, mask in masks.items() if mask.any()}
 
 
+def _pair_tables(
+    pairs: dict,
+    out: dict[str, list],
+    blind: dict[str, np.ndarray],
+    position: pd.Series,
+    have_overlap: bool,
+    **model_keys,
+) -> None:
+    """Append one model's rows, under every prompt condition, to the tables in `out`.
+
+    `model_keys` start every row. `blind` and `position` are the question-blind predictions
+    for all items and each item's row in them.
+    """
+    for condition, pair in pairs.items():
+        keys = {**model_keys, "condition": condition}
+        frame = pair.frame
+        everything = np.ones(len(frame), dtype=bool)
+        gain = pair.score_adapter - pair.score_base
+        low, high = bootstrap_ci(gain)
+        out["overall"].append(
+            {
+                **_row(pair, everything, **keys),
+                "gain_ci_low": low,
+                "gain_ci_high": high,
+                "share_improved": (gain > 0).mean(),
+                "answer_mass_base": pair.mass_base.mean(),
+                "answer_mass_adapter": pair.mass_adapter.mean(),
+            }
+        )
+
+        masks = _subset_masks(frame, have_overlap)
+        out["by_subset"] += [_row(pair, m, **keys, subset=s) for s, m in masks.items()]
+        out["moralmachine_reversed"] += _moralmachine_reversed(pair, **keys)
+
+        for (split, dataset), idx in frame.groupby(["split", "dataset_name"]).indices.items():
+            mask = frame.index.isin(idx)
+            out["by_dataset"].append(_row(pair, mask, **keys, split=split, dataset_name=dataset))
+
+        if have_overlap:
+            opinionqa = (frame["dataset_name"] == "OpinionQA").to_numpy()
+            for split in ("pop", "grouped"):
+                for s in STATUSES:
+                    mask = opinionqa & ((frame["split"] == split) & (frame["status"] == s))
+                    if mask.any():
+                        out["overlap_opinionqa"].append(
+                            _row(pair, mask.to_numpy(), **keys, split=split, status=s)
+                        )
+
+        if condition == "subpop_exact":
+            for trained in (True, False):
+                mask = (frame["subpop_group_trained"] == trained).to_numpy()
+                out["condition_c_by_subgroup"].append(
+                    _row(pair, mask, **keys, subgroup_trained=trained)
+                )
+            continue
+
+        args = (pair.human, pair.norm)
+        base_best, base_t = best_temperature(pair.pred_base, *args)
+        adapter_best, adapter_t = best_temperature(pair.pred_adapter, *args)
+        groups = frame["dataset_name"]
+        # The human average share of each letter, from other questions only.
+        shape = blind["benchmark"][position.loc[frame["item_id"]].to_numpy()]
+        n_options = frame["n_options"].to_numpy()
+        base_matched, _ = best_temperature(
+            match_letter_usage(pair.pred_base, shape, n_options), *args
+        )
+        adapter_matched, _ = best_temperature(
+            match_letter_usage(pair.pred_adapter, shape, n_options), *args
+        )
+        out["calibration_controls"].append(
+            {
+                **keys,
+                "base": pair.score_base.mean(),
+                "adapter": pair.score_adapter.mean(),
+                "base_at_best_temperature": base_best,
+                "base_best_temperature": base_t,
+                "adapter_at_best_temperature": adapter_best,
+                "adapter_best_temperature": adapter_t,
+                "base_temperature_per_dataset": best_temperature_per_group(
+                    pair.pred_base, *args, groups
+                ).mean(),
+                "adapter_temperature_per_dataset": best_temperature_per_group(
+                    pair.pred_adapter, *args, groups
+                ).mean(),
+                "base_letter_usage_matched": base_matched,
+                "adapter_letter_usage_matched": adapter_matched,
+                "base_share_on_first_option": pair.pred_base[:, 0].mean(),
+                "adapter_share_on_first_option": pair.pred_adapter[:, 0].mean(),
+                "human_share_on_first_option": pair.human[:, 0].mean(),
+            }
+        )
+
+
 def _epoch_scored(run_dir: Path) -> int | None:
     """The training epoch a SimBench run scored, from the adapter path in its metadata."""
     adapter = json.loads((run_dir / "meta.json").read_text())["identity"]["model"]["adapter"]
     match = re.fullmatch(r"epoch-(\d+)", Path(adapter or "").name)
     return int(match.group(1)) if match else None
+
+
+def _epoch_rows(model: str, name: str, training_tag: str) -> list[dict]:
+    """Training and validation loss per finished epoch of a training run, if it is on disk."""
+    run_dir = ADAPTERS_DIR / training_tag
+    if not (run_dir / "metrics.json").exists():
+        print(f"[{run_dir.name}: training run not on disk, its table of epochs left as is]")
+        return []
+    best = json.loads((run_dir / "meta.json").read_text()).get("best_epoch")
+    return [
+        {
+            "model": model,
+            "model_name": name,
+            "epoch": row["epoch"],
+            "train_loss": row["train_loss"],
+            "val_loss": row["val_loss"],
+            "lowest_val_loss": row["epoch"] == best,
+            "train_minutes": row["train_seconds"] / 60,
+        }
+        for row in json.loads((run_dir / "metrics.json").read_text())
+        if not row["partial"]
+    ]
 
 
 def _retrained(items: pd.DataFrame, have_overlap: bool) -> tuple[list[dict], list[dict]]:
@@ -189,25 +326,78 @@ def _retrained(items: pd.DataFrame, have_overlap: bool) -> tuple[list[dict], lis
                                 ),
                             }
                         )
-        run_dir = ADAPTERS_DIR / spec["training_tag"]
-        if (run_dir / "metrics.json").exists():
-            best = json.loads((run_dir / "meta.json").read_text()).get("best_epoch")
-            for row in json.loads((run_dir / "metrics.json").read_text()):
-                if not row["partial"]:
-                    epochs.append(
-                        {
-                            "model": model,
-                            "model_name": name,
-                            "epoch": row["epoch"],
-                            "train_loss": row["train_loss"],
-                            "val_loss": row["val_loss"],
-                            "lowest_val_loss": row["epoch"] == best,
-                            "train_minutes": row["train_seconds"] / 60,
-                        }
-                    )
-        else:
-            print(f"[{run_dir.name}: training run not on disk, retrain_epochs.csv left as is]")
+        epochs += _epoch_rows(model, name, spec["training_tag"])
     return comparisons, epochs
+
+
+def _trained_here(
+    items: pd.DataFrame,
+    released_pairs: dict[str, dict],
+    blind: dict[str, np.ndarray],
+    position: pd.Series,
+    have_overlap: bool,
+) -> dict[str, list]:
+    """Tables for adapters trained here on base models SubPOP released none for.
+
+    The per-model tables once per checkpoint scored, each row starting with the checkpoint's
+    `run` and `epoch`. Then every checkpoint beside the released adapters its entry in
+    `TRAINED_HERE` names, on the same slices as by_subset.csv, and the loss per epoch.
+    """
+    out = {table: [] for table in (*PER_MODEL_TABLES, "vs_released", "epochs")}
+    for model, spec in TRAINED_HERE.items():
+        name = spec["name"]
+        runs = {
+            run: load_pairs(items, RESULTS_DIR, spec["stem"], adapter_tag=tag)
+            for run, tag in spec["runs"].items()
+        }
+        if any(pairs is None for pairs in runs.values()):
+            print(f"[{name}: runs of the adapter trained here not all on disk, skipped]")
+            continue
+        for run, tag in spec["runs"].items():
+            keys = {
+                "model": model,
+                "model_name": name,
+                "run": run,
+                "epoch": _epoch_scored(RESULTS_DIR / tag),
+            }
+            _pair_tables(runs[run], out, blind, position, have_overlap, **keys)
+            for other in spec["beside"]:
+                if other not in released_pairs:
+                    continue
+                for condition, pair in runs[run].items():
+                    theirs = released_pairs[other][condition]
+                    assert pair.frame["item_id"].equals(theirs.frame["item_id"])
+                    whole = len(pair.frame)
+                    for subset, mask in _subset_masks(pair.frame, have_overlap).items():
+                        if subset != "all items" and mask.sum() == whole:
+                            continue  # the same items under another name
+                        out["vs_released"].append(
+                            {
+                                **keys,
+                                "condition": condition,
+                                "subset": subset,
+                                "n": int(mask.sum()),
+                                "beside": other,
+                                "beside_name": MODEL_PAIRS[other][1],
+                                "base": pair.score_base[mask].mean(),
+                                "beside_base": theirs.score_base[mask].mean(),
+                                **compare_scores(
+                                    pair.score_adapter[mask], theirs.score_adapter[mask]
+                                ),
+                            }
+                        )
+        out["epochs"] += _epoch_rows(model, name, spec["training_tag"])
+    return out
+
+
+def _write(tables: dict[str, list], directory: Path) -> dict[str, pd.DataFrame]:
+    """Write each table that has rows to `directory`; a table without rows is left as it is."""
+    frames = {name: pd.DataFrame(rows) for name, rows in tables.items() if rows}
+    if frames:
+        directory.mkdir(parents=True, exist_ok=True)
+    for name, frame in frames.items():
+        frame.round(4).to_csv(directory / f"{name}.csv", index=False)
+    return frames
 
 
 def main() -> None:
@@ -243,91 +433,16 @@ def main() -> None:
     ]  # fmt: skip
 
     animals = animals_versus_people(items)
-    overall, subsets, datasets, controls, subgroups, overlap = [], [], [], [], [], []
-    moralmachine = []
+    released, released_pairs = {table: [] for table in PER_MODEL_TABLES}, {}
     for model, (stem, name) in MODEL_PAIRS.items():
         pairs = load_pairs(items, RESULTS_DIR, stem)
         if pairs is None:
             print(f"[{name}: runs not both on disk, skipped]")
             continue
-        for condition, pair in pairs.items():
-            keys = {"model": model, "model_name": name, "condition": condition}
-            frame = pair.frame
-            everything = np.ones(len(frame), dtype=bool)
-            gain = pair.score_adapter - pair.score_base
-            low, high = bootstrap_ci(gain)
-            overall.append(
-                {
-                    **_row(pair, everything, **keys),
-                    "gain_ci_low": low,
-                    "gain_ci_high": high,
-                    "share_improved": (gain > 0).mean(),
-                    "answer_mass_base": pair.mass_base.mean(),
-                    "answer_mass_adapter": pair.mass_adapter.mean(),
-                }
-            )
+        released_pairs[model] = pairs
+        _pair_tables(pairs, released, blind, position, have_overlap, model=model, model_name=name)
 
-            masks = _subset_masks(frame, have_overlap)
-            subsets += [_row(pair, m, **keys, subset=s) for s, m in masks.items()]
-            moralmachine += _moralmachine_reversed(pair, **keys)
-
-            for (split, dataset), idx in frame.groupby(["split", "dataset_name"]).indices.items():
-                mask = frame.index.isin(idx)
-                datasets.append(_row(pair, mask, **keys, split=split, dataset_name=dataset))
-
-            if have_overlap:
-                opinionqa = (frame["dataset_name"] == "OpinionQA").to_numpy()
-                for split in ("pop", "grouped"):
-                    for s in STATUSES:
-                        mask = opinionqa & ((frame["split"] == split) & (frame["status"] == s))
-                        if mask.any():
-                            overlap.append(
-                                _row(pair, mask.to_numpy(), **keys, split=split, status=s)
-                            )
-
-            if condition == "subpop_exact":
-                for trained in (True, False):
-                    mask = (frame["subpop_group_trained"] == trained).to_numpy()
-                    subgroups.append(_row(pair, mask, **keys, subgroup_trained=trained))
-                continue
-
-            args = (pair.human, pair.norm)
-            base_best, base_t = best_temperature(pair.pred_base, *args)
-            adapter_best, adapter_t = best_temperature(pair.pred_adapter, *args)
-            groups = frame["dataset_name"]
-            # The human average share of each letter, from other questions only.
-            shape = blind["benchmark"][position.loc[frame["item_id"]].to_numpy()]
-            n_options = frame["n_options"].to_numpy()
-            base_matched, _ = best_temperature(
-                match_letter_usage(pair.pred_base, shape, n_options), *args
-            )
-            adapter_matched, _ = best_temperature(
-                match_letter_usage(pair.pred_adapter, shape, n_options), *args
-            )
-            controls.append(
-                {
-                    **keys,
-                    "base": pair.score_base.mean(),
-                    "adapter": pair.score_adapter.mean(),
-                    "base_at_best_temperature": base_best,
-                    "base_best_temperature": base_t,
-                    "adapter_at_best_temperature": adapter_best,
-                    "adapter_best_temperature": adapter_t,
-                    "base_temperature_per_dataset": best_temperature_per_group(
-                        pair.pred_base, *args, groups
-                    ).mean(),
-                    "adapter_temperature_per_dataset": best_temperature_per_group(
-                        pair.pred_adapter, *args, groups
-                    ).mean(),
-                    "base_letter_usage_matched": base_matched,
-                    "adapter_letter_usage_matched": adapter_matched,
-                    "base_share_on_first_option": pair.pred_base[:, 0].mean(),
-                    "adapter_share_on_first_option": pair.pred_adapter[:, 0].mean(),
-                    "human_share_on_first_option": pair.human[:, 0].mean(),
-                }
-            )
-
-    if not overall:
+    if not released["overall"]:
         raise SystemExit(f"no complete base and adapter pair under {RESULTS_DIR}")
 
     retrain, retrain_epochs = _retrained(items, have_overlap)
@@ -342,26 +457,19 @@ def main() -> None:
             f"[{TRAIN_EXAMPLES_PATH.name} not found: retrain_validation_reference.csv left as is]"
         )
 
-    TABLES_DIR.mkdir(parents=True, exist_ok=True)
     tables = {
-        "overall": overall,
-        "by_subset": subsets,
-        "by_dataset": datasets,
+        **released,
         "question_blind": blind_rows,
-        "calibration_controls": controls,
-        "condition_c_by_subgroup": subgroups,
-        "overlap_opinionqa": overlap,
-        "moralmachine_reversed": moralmachine,
         "moralmachine_animals_vs_people": animals.to_dict("records"),
         "retrain": retrain,
         "retrain_epochs": retrain_epochs,
         "retrain_validation_reference": validation_reference,
     }
-    frames = {}
-    for filename, rows in tables.items():
-        if rows:
-            frames[filename] = pd.DataFrame(rows)
-            frames[filename].round(4).to_csv(TABLES_DIR / f"{filename}.csv", index=False)
+    frames = _write(tables, TABLES_DIR)
+    trained_dir = TABLES_DIR / "trained_here"
+    trained = _write(
+        _trained_here(items, released_pairs, blind, position, have_overlap), trained_dir
+    )
 
     print("\nOverall, base -> adapter (gain with a paired-bootstrap 95% interval)")
     print(frames["overall"].drop(columns="model").round(2).to_string(index=False))
@@ -400,7 +508,16 @@ def main() -> None:
             .round(4)
             .to_string()
         )
+    if "overall" in trained:
+        print("\nAdapters trained here, base -> adapter")
+        print(trained["overall"].drop(columns="model").round(2).to_string(index=False))
+    if "vs_released" in trained:
+        print("\nAdapters trained here beside released adapters on the same items")
+        shown = trained["vs_released"][trained["vs_released"]["subset"] == "all items"]
+        print(shown.drop(columns=["model", "subset", "beside"]).round(2).to_string(index=False))
     print(f"\nwrote {len(frames)} tables to {TABLES_DIR}")
+    if trained:
+        print(f"wrote {len(trained)} tables to {trained_dir}")
 
 
 if __name__ == "__main__":

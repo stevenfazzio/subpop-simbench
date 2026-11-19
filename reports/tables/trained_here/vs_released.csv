@@ -1,0 +1,73 @@
+model,model_name,run,epoch,condition,subset,n,beside,beside_name,base,beside_base,score,other_score,difference,ci_low,ci_high
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,all items,13510,llama-3-70b,Llama-3-70B,16.6651,4.011,25.1919,34.5696,-9.3777,-10.1741,-8.587
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,pop split,7167,llama-3-70b,Llama-3-70B,17.5324,0.8319,22.9322,31.1477,-8.2155,-9.4175,-7.0576
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,grouped split,6343,llama-3-70b,Llama-3-70B,15.6852,7.6031,27.7451,38.4361,-10.691,-11.6161,-9.7235
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,OpinionQA,1484,llama-3-70b,Llama-3-70B,44.8231,37.2554,65.5218,68.1747,-2.6529,-3.9691,-1.2685
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,other opinion surveys,8344,llama-3-70b,Llama-3-70B,13.2926,-0.6527,20.8303,31.9564,-11.1261,-11.9776,-10.277
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,non-survey tasks,3682,llama-3-70b,Llama-3-70B,12.9588,1.181,18.8213,26.9474,-8.1261,-10.2157,-6.0217
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,all but OpinionQA,12026,llama-3-70b,Llama-3-70B,13.1904,-0.0913,20.2152,30.4228,-10.2076,-11.0911,-9.3489
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,no matching training question,12564,llama-3-70b,Llama-3-70B,14.7265,1.4541,22.4851,32.3811,-9.896,-10.7011,-9.0648
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,all items,13510,llama-3-70b,Llama-3-70B,7.8253,4.5185,19.2158,30.7101,-11.4942,-12.2214,-10.7561
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,pop split,7167,llama-3-70b,Llama-3-70B,6.755,0.7694,14.5142,28.1111,-13.5969,-14.7406,-12.5416
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,grouped split,6343,llama-3-70b,Llama-3-70B,9.0346,8.7547,24.5283,33.6466,-9.1183,-10.1026,-8.1812
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,OpinionQA,1484,llama-3-70b,Llama-3-70B,41.3375,31.1572,68.8297,71.7613,-2.9316,-3.9505,-1.843
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,other opinion surveys,8344,llama-3-70b,Llama-3-70B,3.4983,1.0808,17.7079,27.1309,-9.423,-10.2562,-8.5768
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,non-survey tasks,3682,llama-3-70b,Llama-3-70B,4.1239,1.5726,2.6365,22.2756,-19.6391,-21.464,-17.8416
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,all but OpinionQA,12026,llama-3-70b,Llama-3-70B,3.6899,1.2314,13.0935,25.6444,-12.5508,-13.3628,-11.6927
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,no matching training question,12564,llama-3-70b,Llama-3-70B,5.3957,2.2782,15.7141,27.767,-12.0528,-12.8291,-11.2519
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,all items,964,llama-3-70b,Llama-3-70B,45.696,53.5217,76.4546,79.3415,-2.887,-3.8015,-1.9648
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,no matching training question,344,llama-3-70b,Llama-3-70B,44.1007,52.4979,69.3426,74.5352,-5.1926,-7.0341,-3.4715
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,all items,13510,mistral-7b,Mistral-7B,16.6651,7.5235,25.1919,22.9479,2.244,1.5148,2.9627
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,pop split,7167,mistral-7b,Mistral-7B,17.5324,3.802,22.9322,19.9243,3.0079,1.8878,4.1306
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,grouped split,6343,mistral-7b,Mistral-7B,15.6852,11.7284,27.7451,26.3643,1.3808,0.4948,2.3479
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,OpinionQA,1484,mistral-7b,Mistral-7B,44.8231,31.6385,65.5218,64.6712,0.8506,-0.5142,2.1911
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,other opinion surveys,8344,mistral-7b,Mistral-7B,13.2926,7.6501,20.8303,20.4988,0.3314,-0.4867,1.1255
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,non-survey tasks,3682,mistral-7b,Mistral-7B,12.9588,-2.4828,18.8213,11.6815,7.1398,5.2194,8.9594
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,all but OpinionQA,12026,mistral-7b,Mistral-7B,13.1904,4.5477,20.2152,17.7992,2.4159,1.6311,3.2164
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,no matching training question,12564,mistral-7b,Mistral-7B,14.7265,5.7521,22.4851,20.5569,1.9282,1.1483,2.6959
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,all items,13510,mistral-7b,Mistral-7B,7.8253,9.3964,19.2158,22.7799,-3.5641,-4.2807,-2.8601
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,pop split,7167,mistral-7b,Mistral-7B,6.755,7.0588,14.5142,19.4189,-4.9047,-5.9739,-3.8946
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,grouped split,6343,mistral-7b,Mistral-7B,9.0346,12.0377,24.5283,26.5776,-2.0493,-2.9491,-1.1339
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,OpinionQA,1484,mistral-7b,Mistral-7B,41.3375,24.9152,68.8297,68.7387,0.0909,-1.0771,1.2626
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,other opinion surveys,8344,mistral-7b,Mistral-7B,3.4983,8.2959,17.7079,19.9299,-2.222,-2.9743,-1.4466
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,non-survey tasks,3682,mistral-7b,Mistral-7B,4.1239,5.6357,2.6365,10.7152,-8.0786,-9.845,-6.338
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,all but OpinionQA,12026,mistral-7b,Mistral-7B,3.6899,7.4814,13.0935,17.1086,-4.0151,-4.76,-3.2384
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,no matching training question,12564,mistral-7b,Mistral-7B,5.3957,8.0583,15.7141,20.1002,-4.3861,-5.1432,-3.6214
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,all items,964,mistral-7b,Mistral-7B,45.696,28.3796,76.4546,76.6072,-0.1526,-1.2081,0.8842
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,no matching training question,344,mistral-7b,Mistral-7B,44.1007,26.4645,69.3426,74.6456,-5.303,-7.0294,-3.3946
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,all items,13510,llama-3-70b,Llama-3-70B,16.6651,4.011,25.2801,34.5696,-9.2895,-10.0655,-8.5126
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,pop split,7167,llama-3-70b,Llama-3-70B,17.5324,0.8319,23.2035,31.1477,-7.9441,-9.1159,-6.8072
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,grouped split,6343,llama-3-70b,Llama-3-70B,15.6852,7.6031,27.6265,38.4361,-10.8096,-11.7333,-9.8454
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,OpinionQA,1484,llama-3-70b,Llama-3-70B,44.8231,37.2554,65.7904,68.1747,-2.3843,-3.6709,-1.0321
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,other opinion surveys,8344,llama-3-70b,Llama-3-70B,13.2926,-0.6527,20.7649,31.9564,-11.1915,-12.0202,-10.3484
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,non-survey tasks,3682,llama-3-70b,Llama-3-70B,12.9588,1.181,19.1851,26.9474,-7.7623,-9.8503,-5.6768
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,all but OpinionQA,12026,llama-3-70b,Llama-3-70B,13.1904,-0.0913,20.2812,30.4228,-10.1416,-11.0001,-9.2863
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,no matching training question,12564,llama-3-70b,Llama-3-70B,14.7265,1.4541,22.5472,32.3811,-9.8338,-10.6385,-9.0102
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,all items,13510,llama-3-70b,Llama-3-70B,7.8253,4.5185,18.9146,30.7101,-11.7955,-12.5343,-11.0531
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,pop split,7167,llama-3-70b,Llama-3-70B,6.755,0.7694,14.3451,28.1111,-13.766,-14.9082,-12.7004
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,grouped split,6343,llama-3-70b,Llama-3-70B,9.0346,8.7547,24.0777,33.6466,-9.5689,-10.5627,-8.621
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,OpinionQA,1484,llama-3-70b,Llama-3-70B,41.3375,31.1572,68.7289,71.7613,-3.0324,-4.0467,-1.9463
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,other opinion surveys,8344,llama-3-70b,Llama-3-70B,3.4983,1.0808,17.2284,27.1309,-9.9025,-10.731,-9.0415
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,non-survey tasks,3682,llama-3-70b,Llama-3-70B,4.1239,1.5726,2.6584,22.2756,-19.6172,-21.4464,-17.8511
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,all but OpinionQA,12026,llama-3-70b,Llama-3-70B,3.6899,1.2314,12.7675,25.6444,-12.8768,-13.689,-12.0046
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,no matching training question,12564,llama-3-70b,Llama-3-70B,5.3957,2.2782,15.385,27.767,-12.382,-13.1648,-11.5644
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,all items,964,llama-3-70b,Llama-3-70B,45.696,53.5217,76.5712,79.3415,-2.7704,-3.6434,-1.8918
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,no matching training question,344,llama-3-70b,Llama-3-70B,44.1007,52.4979,69.5139,74.5352,-5.0213,-6.7315,-3.3986
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,all items,13510,mistral-7b,Mistral-7B,16.6651,7.5235,25.2801,22.9479,2.3322,1.6067,3.0565
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,pop split,7167,mistral-7b,Mistral-7B,17.5324,3.802,23.2035,19.9243,3.2793,2.1535,4.3804
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,grouped split,6343,mistral-7b,Mistral-7B,15.6852,11.7284,27.6265,26.3643,1.2622,0.3757,2.215
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,OpinionQA,1484,mistral-7b,Mistral-7B,44.8231,31.6385,65.7904,64.6712,1.1192,-0.2576,2.4542
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,other opinion surveys,8344,mistral-7b,Mistral-7B,13.2926,7.6501,20.7649,20.4988,0.266,-0.5426,1.042
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,non-survey tasks,3682,mistral-7b,Mistral-7B,12.9588,-2.4828,19.1851,11.6815,7.5036,5.5597,9.3279
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,all but OpinionQA,12026,mistral-7b,Mistral-7B,13.1904,4.5477,20.2812,17.7992,2.4819,1.6985,3.2683
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,no matching training question,12564,mistral-7b,Mistral-7B,14.7265,5.7521,22.5472,20.5569,1.9903,1.2099,2.7531
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,all items,13510,mistral-7b,Mistral-7B,7.8253,9.3964,18.9146,22.7799,-3.8653,-4.5889,-3.1537
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,pop split,7167,mistral-7b,Mistral-7B,6.755,7.0588,14.3451,19.4189,-5.0738,-6.1393,-4.0752
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,grouped split,6343,mistral-7b,Mistral-7B,9.0346,12.0377,24.0777,26.5776,-2.4999,-3.4322,-1.5773
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,OpinionQA,1484,mistral-7b,Mistral-7B,41.3375,24.9152,68.7289,68.7387,-0.0099,-1.1845,1.1812
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,other opinion surveys,8344,mistral-7b,Mistral-7B,3.4983,8.2959,17.2284,19.9299,-2.7015,-3.4688,-1.941
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,non-survey tasks,3682,mistral-7b,Mistral-7B,4.1239,5.6357,2.6584,10.7152,-8.0568,-9.8449,-6.314
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,all but OpinionQA,12026,mistral-7b,Mistral-7B,3.6899,7.4814,12.7675,17.1086,-4.3411,-5.091,-3.5722
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,no matching training question,12564,mistral-7b,Mistral-7B,5.3957,8.0583,15.385,20.1002,-4.7152,-5.4778,-3.9493
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,all items,964,mistral-7b,Mistral-7B,45.696,28.3796,76.5712,76.6072,-0.036,-1.0432,1.0097
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,no matching training question,344,mistral-7b,Mistral-7B,44.1007,26.4645,69.5139,74.6456,-5.1317,-6.7933,-3.3036

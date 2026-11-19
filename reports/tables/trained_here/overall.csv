@@ -1,0 +1,7 @@
+model,model_name,run,epoch,condition,n,base,adapter,gain,question_blind,gain_ci_low,gain_ci_high,share_improved,answer_mass_base,answer_mass_adapter
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,13510,16.6651,25.1919,8.5268,19.4041,7.8956,9.1154,0.589,0.9972,0.9992
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,13510,7.8253,19.2158,11.3906,19.4041,10.7043,12.0171,0.6117,0.758,0.9942
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,964,45.696,76.4546,30.7585,64.7856,28.5299,33.0644,0.8029,0.9096,0.9967
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,13510,16.6651,25.2801,8.615,19.4041,7.9883,9.2235,0.5873,0.9972,0.9992
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,13510,7.8253,18.9146,11.0893,19.4041,10.3881,11.7284,0.6059,0.758,0.9947
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,964,45.696,76.5712,30.8751,64.7856,28.6461,33.1834,0.7998,0.9096,0.9969

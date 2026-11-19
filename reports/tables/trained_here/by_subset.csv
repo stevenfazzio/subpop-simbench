@@ -1,0 +1,41 @@
+model,model_name,run,epoch,condition,subset,n,base,adapter,gain,question_blind
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,all items,13510,16.6651,25.1919,8.5268,19.4041
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,pop split,7167,17.5324,22.9322,5.3998,19.9165
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,grouped split,6343,15.6852,27.7451,12.0599,18.8251
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,OpinionQA,1484,44.8231,65.5218,20.6987,56.6276
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,other opinion surveys,8344,13.2926,20.8303,7.5376,12.7973
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,non-survey tasks,3682,12.9588,18.8213,5.8625,19.3735
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,all but OpinionQA,12026,13.1904,20.2152,7.0248,14.8107
+olmo-2-32b,OLMo-2 32B,best validation loss,6,simbench,no matching training question,12564,14.7265,22.4851,7.7586,16.7396
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,all items,13510,7.8253,19.2158,11.3906,19.4041
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,pop split,7167,6.755,14.5142,7.7592,19.9165
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,grouped split,6343,9.0346,24.5283,15.4937,18.8251
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,OpinionQA,1484,41.3375,68.8297,27.4921,56.6276
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,other opinion surveys,8344,3.4983,17.7079,14.2096,12.7973
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,non-survey tasks,3682,4.1239,2.6365,-1.4874,19.3735
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,all but OpinionQA,12026,3.6899,13.0935,9.4037,14.8107
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_skeleton,no matching training question,12564,5.3957,15.7141,10.3184,16.7396
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,all items,964,45.696,76.4546,30.7585,64.7856
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,grouped split,964,45.696,76.4546,30.7585,64.7856
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,OpinionQA,964,45.696,76.4546,30.7585,64.7856
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,no matching training question,344,44.1007,69.3426,25.2419,64.9711
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,all items,13510,16.6651,25.2801,8.615,19.4041
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,pop split,7167,17.5324,23.2035,5.6712,19.9165
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,grouped split,6343,15.6852,27.6265,11.9413,18.8251
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,OpinionQA,1484,44.8231,65.7904,20.9673,56.6276
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,other opinion surveys,8344,13.2926,20.7649,7.4722,12.7973
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,non-survey tasks,3682,12.9588,19.1851,6.2263,19.3735
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,all but OpinionQA,12026,13.1904,20.2812,7.0908,14.8107
+olmo-2-32b,OLMo-2 32B,final epoch,10,simbench,no matching training question,12564,14.7265,22.5472,7.8207,16.7396
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,all items,13510,7.8253,18.9146,11.0893,19.4041
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,pop split,7167,6.755,14.3451,7.5901,19.9165
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,grouped split,6343,9.0346,24.0777,15.043,18.8251
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,OpinionQA,1484,41.3375,68.7289,27.3913,56.6276
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,other opinion surveys,8344,3.4983,17.2284,13.7301,12.7973
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,non-survey tasks,3682,4.1239,2.6584,-1.4655,19.3735
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,all but OpinionQA,12026,3.6899,12.7675,9.0777,14.8107
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_skeleton,no matching training question,12564,5.3957,15.385,9.9892,16.7396
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,all items,964,45.696,76.5712,30.8751,64.7856
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,grouped split,964,45.696,76.5712,30.8751,64.7856
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,OpinionQA,964,45.696,76.5712,30.8751,64.7856
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,no matching training question,344,44.1007,69.5139,25.4132,64.9711

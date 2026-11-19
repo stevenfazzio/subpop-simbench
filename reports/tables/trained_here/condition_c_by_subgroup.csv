@@ -1,0 +1,5 @@
+model,model_name,run,epoch,condition,subgroup_trained,n,base,adapter,gain,question_blind
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,True,349,45.007,77.476,32.469,60.0922
+olmo-2-32b,OLMo-2 32B,best validation loss,6,subpop_exact,False,615,46.087,75.8749,29.7879,67.4491
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,True,349,45.007,77.6952,32.6882,60.0922
+olmo-2-32b,OLMo-2 32B,final epoch,10,subpop_exact,False,615,46.087,75.9333,29.8463,67.4491
